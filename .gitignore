@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[oc]
+.pytest_cache/
+dist/
+wheels/
+*.egg-info
+
+# Umgebung
+.venv/
+
+# erzeugtes Deck, Medien und Vorschau
+build/
