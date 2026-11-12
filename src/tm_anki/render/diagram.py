@@ -8,8 +8,9 @@ import numpy as np
 import sympy as sp
 
 from .. import conventions as cv
+from ..fmt import complex_extrema, is_simple, latex_value
 from ..fmt import math as fmt_math
-from ..keypoints import KeyPoint
+from ..keypoints import KeyPoint, curve_forms, extremum_offset
 from ..solver import Result
 from ..symbols import S, numeric_subs
 from .base import Canvas, add, align_for, dot, norm, scale
@@ -67,8 +68,9 @@ def draw_diagram(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], vis
         for g in geo.members:
             n = max(2, int(g.L / (0.15 * u)))
             obstacles += [g.point(s) for s in np.linspace(0, g.L, n)]
+        placed_markers: list = []  # über alle Stabzüge, damit sich Marker nicht überdecken
         for chain in geo.st.chains:
-            obstacles += _draw_chain(cv_, result, qty, chain, k, side, color, vis)
+            obstacles += _draw_chain(cv_, result, qty, chain, k, side, color, vis, placed_markers)
         _place_value_labels(cv_, result, qty, kps, k, side, vis, np.array(obstacles))
 
     if geo.H >= 1e-9:  # Rahmen: Name oben links über dem Verlauf
@@ -76,7 +78,7 @@ def draw_diagram(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], vis
                  occupy=False)
 
 
-def _draw_chain(cv_: Canvas, result: Result, qty: str, chain, k, side, color, vis):
+def _draw_chain(cv_: Canvas, result: Result, qty: str, chain, k, side, color, vis, placed_markers: list):
     geo, u = cv_.geo, cv_.u
     eps = 1e-9
 
@@ -90,14 +92,14 @@ def _draw_chain(cv_: Canvas, result: Result, qty: str, chain, k, side, color, vi
             ss = np.linspace(_num(seg.sa), _num(seg.sb), SAMPLES)
             items.append((g, ss, _lam(seg.f(qty))(ss), seg))
 
-    # Abschlusslinien: an Stabzugenden, Ecken und Sprüngen
+    # Konturlinien an allen Teilbereichsgrenzen (bei Sprüngen und Ecken auf beiden Seiten)
     closers = []
     for i in range(len(items) + 1):
         left = items[i - 1] if i > 0 else None
         right = items[i] if i < len(items) else None
         corner = left and right and left[0] is not right[0] and abs(dot(left[0].e1, right[0].e1) - 1) > 1e-6
         jump = left and right and abs(left[2][-1] - right[2][0]) * k > eps
-        if left and (right is None or corner or jump):
+        if left:
             closers.append((left[0], left[1][-1], left[2][-1]))
         if right and (left is None or corner or jump):
             closers.append((right[0], right[1][0], right[2][0]))
@@ -121,16 +123,10 @@ def _draw_chain(cv_: Canvas, result: Result, qty: str, chain, k, side, color, vi
         xs, ys = zip(*curve)
         cv_.line(xs, ys, occupy=False, color=color, lw=1.8, zorder=3, **vis)
 
-    # ⊕/⊖ je zusammenhängendem Vorzeichenbereich entlang gerader Stababschnitte
+    # ⊕/⊖ für jeden Teilbereich und darin für jeden Vorzeichenbereich einzeln
     markers: list = []
-    run: list[tuple] = []
     for g, ss, vs, _seg in items:
-        if run and abs(dot(run[-1][0].e1, g.e1) - 1) > 1e-6:
-            markers += _sign_markers(cv_, run, k, side, color, vis)
-            run = []
-        run += [(g, s, v) for s, v in zip(ss, vs)]
-    if run:
-        markers += _sign_markers(cv_, run, k, side, color, vis)
+        markers += _sign_markers(cv_, [(g, s, v) for s, v in zip(ss, vs)], k, side, color, vis, placed_markers)
 
     for g, s, v in closers:
         if abs(v) * k < eps:
@@ -146,9 +142,9 @@ def _draw_chain(cv_: Canvas, result: Result, qty: str, chain, k, side, color, vi
     return obstacles
 
 
-def _sign_markers(cv_: Canvas, samples: list[tuple], k, side, color, vis) -> list:
+def _sign_markers(cv_: Canvas, samples: list[tuple], k, side, color, vis, placed: list) -> list:
     """Ein ⊕/⊖ je Vorzeichenbereich; ``samples`` = [(Stabgeometrie, s, Wert)] entlang einer Geraden.
-    Gibt die Markerpositionen zurück."""
+    ``placed`` = bereits gesetzte Marker (wird ergänzt). Gibt die neuen Markerpositionen zurück."""
     u = cv_.u
     centers = []
     pts = [g.point(s) for g, s, _ in samples]
@@ -175,21 +171,41 @@ def _sign_markers(cv_: Canvas, samples: list[tuple], k, side, color, vis) -> lis
             break
         seg = slice(i, j + 1)
         length = xs[j] - xs[i]
-        if length > 0.9 * u and np.max(np.abs(vs[seg])) * k > 1.0 * u:
-            # dicke Stelle, aber mit Abstand zu den Bereichsrändern und eher zur Mitte hin
+        if length > 0.5 * u and np.max(np.abs(vs[seg])) * k > 0.05 * u:
+            txt = "+" if sign[i] > 0 else "−"
+
+            def draw(p):
+                cv_.ax.text(p[0], p[1], txt, fontsize=8, ha="center", va="center", color=cv.INK, zorder=5,
+                            bbox=dict(boxstyle="circle,pad=0.12", fc="white", ec=color, lw=0.9), **vis)
+                centers.append(p)
+                placed.append(p)
+
+            def free(p):
+                return all(math.dist(p, m) >= 1.0 * u for m in placed)
+
+            # innen an einer dicken Stelle, mit Abstand zu den Bereichsrändern und eher zur Mitte hin,
+            # und nicht auf einem schon gesetzten Marker (z. B. an T-Anschlüssen)
             x_mid = 0.5 * (xs[i] + xs[j])
             inner = [t for t in range(i, j + 1) if xs[i] + 0.2 * length <= xs[t] <= xs[j] - 0.2 * length]
-            idx = max(inner or range(i, j + 1),
-                      key=lambda t: abs(vs[t]) * (1 - 0.6 * abs(xs[t] - x_mid) / length))
-            if abs(vs[idx]) * k < 0.8 * u:
-                i = j + 1
-                continue
-            g, s, v = samples[idx]
-            p = add(g.point(s), g.e3, side * v * k * 0.5)
-            txt = "+" if sign[i] > 0 else "−"
-            cv_.ax.text(p[0], p[1], txt, fontsize=8, ha="center", va="center", color=cv.INK, zorder=5,
-                        bbox=dict(boxstyle="circle,pad=0.12", fc="white", ec=color, lw=0.9), **vis)
-            centers.append(p)
+            ranked = sorted(inner or range(i, j + 1),
+                            key=lambda t: -abs(vs[t]) * (1 - 0.6 * abs(xs[t] - x_mid) / length))
+            done = False
+            for t in ranked:
+                g, s, v = samples[t]
+                if abs(v) * k < 0.8 * u:
+                    break
+                p = add(g.point(s), g.e3, side * v * k * 0.5)
+                if free(p):
+                    draw(p)
+                    done = True
+                    break
+            if not done:  # zu schmal für innen: Marker außen neben die Kurve
+                for t in ranked:
+                    g, s, v = samples[t]
+                    p = add(g.point(s), g.e3, side * v * k + side * math.copysign(0.45 * u, v))
+                    if free(p):
+                        draw(p)
+                        break
         i = j + 1
     return centers
 
@@ -197,7 +213,7 @@ def _sign_markers(cv_: Canvas, samples: list[tuple], k, side, color, vis) -> lis
 def _place_value_labels(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], k, side, vis,
                         obstacles: np.ndarray):
     geo, u = cv_.geo, cv_.u
-    fs = cv.FONT_SIZE - 0.5
+    fs = cv.VALUE_FONT_SIZE
     placed: list[tuple[float, float, float, float]] = []
     text_pad = 0.08 * u
 
@@ -210,9 +226,20 @@ def _place_value_labels(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoin
         clash = sum(1 for b in placed if box[0] < b[2] and box[2] > b[0] and box[1] < b[3] and box[3] > b[1])
         return inside + 50 * clash
 
+    # Lage der Extrema als Bemaßung direkt am Stab, gemessen ab Beginn des Teilbereichs
+    dim_pts = _draw_extremum_dimensions(cv_, result, kps, side, vis, placed)
+    if dim_pts:
+        obstacles = np.vstack([obstacles.reshape(-1, 2), np.array(dim_pts)])
+
     for kp in kps:
-        text = fmt_math(kp.value)
         v = _num(kp.value)
+        if is_simple(kp.value):
+            text = fmt_math(kp.value)
+            if cv.VALUE_FULL_SIZE_FRACTIONS:
+                text = text.replace("\\frac", "\\dfrac")
+        else:  # unhandlicher Ausdruck (z. B. allgemeine Trapezlast): benennen, wo das Extremum liegt
+            text = (f"$\\{'max' if v > 0 else 'min'}\\,{cv.LATEX[qty]}\\ "
+                    f"({cv.ZERO_OF_SLOPE[qty]})$")
         best = None
         for mi, s_expr in [(kp.member, kp.s), *kp.alts]:
             base = _label_anchor(geo, kp, mi, _num(s_expr), v, k, side, u)
@@ -244,6 +271,86 @@ def _place_value_labels(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoin
             cv_.circle(c, 0.07 * u, occupy=False, fc=cv.INK, ec="none", zorder=4, **vis)
         placed.append(box)
         cv_.text(anchor, text, fs=fs, ha=ha, va=va, occupy=False, zorder=6, **vis)
+
+    # Kurvenform direkt an der Kurve (kurz, z. B. "quadr."), nach den Werten platziert
+    fs_c = cv.CURVE_FONT_SIZE
+    for crv in curve_forms(result, qty):
+        text = cv.CURVE_LABELS.get(crv.degree, f"Grad {crv.degree}")
+        lo, hi = _num(crv.x1_lo), _num(crv.x1_hi)
+        best = None
+        for frac in (0.5, 0.35, 0.65, 0.25, 0.75, 0.15, 0.85):
+            x1 = lo + frac * (hi - lo)
+            mi = next(m for m in crv.members
+                      if _num(result.structure.members[m].s0) - 1e-9 <= x1
+                      <= _num(result.structure.members[m].s0 + result.structure.members[m].length) + 1e-9)
+            s = x1 - _num(result.structure.members[mi].s0)
+            v = _num(result.members[mi].value(qty, sp.Float(s)))
+            if abs(v) * k < 1e-9:
+                continue
+            g = geo.members[mi]
+            out = scale(g.e3, side * math.copysign(1.0, v))
+            anchor = add(add(g.point(s), g.e3, side * v * k), out, 0.22 * u)
+            ha, va = align_for(out)
+            box = cv_.text_box(anchor, text, fs_c, ha, va)
+            sc = score(box)
+            if best is None or sc < best[0]:
+                best = (sc, anchor, ha, va, out, box)
+            if sc == 0:
+                break
+        if best is None:
+            continue
+        sc, anchor, ha, va, out, box = best
+        for _ in range(4):
+            if sc == 0:
+                break
+            trial = add(anchor, out, 0.3 * u)
+            tbox = cv_.text_box(trial, text, fs_c, ha, va)
+            if score(tbox) > sc:
+                break
+            anchor, box, sc = trial, tbox, score(tbox)
+        placed.append(box)
+        cv_.text(anchor, text, fs=fs_c, ha=ha, va=va, occupy=False, zorder=6, color=cv.INK_MUTED,
+                 fontstyle="italic", **vis)
+
+
+def _draw_extremum_dimensions(cv_: Canvas, result: Result, kps: list[KeyPoint], side: int, vis, placed: list):
+    """Bemaßung vom Beginn des Teilbereichs bis zum Extremum, auf der dem Verlauf abgewandten Seite.
+    Gibt Punkte entlang der Bemaßung zurück (Hindernisse für weitere Beschriftungen)."""
+    geo, u = cv_.geo, cv_.u
+    fs = cv.FONT_SIZE
+    pts = []
+    long_names = {id(kp): name for kp, _, name in complex_extrema(result, kps) if name}
+    for kp in kps:
+        if kp.kind != "extrem":
+            continue
+        seg = next(g for g in result.members[kp.member].segments
+                   if _num(g.sa) - 1e-9 <= _num(kp.s) <= _num(g.sb) + 1e-9)
+        dist = extremum_offset(result, kp)
+        g = geo.members[kp.member]
+        n = scale(g.e3, -side * math.copysign(1.0, _num(kp.value)))  # Gegenseite des Verlaufs
+        off = (0.85 if dot(n, g.e3) > 0 else 0.6) * u  # auf der Faserseite etwas weiter weg
+        s0, s1 = _num(seg.sa), _num(kp.s)
+        a0, a1 = g.point(s0), g.point(s1)
+        p0, p1 = add(a0, n, off), add(a1, n, off)
+        style = dict(occupy=False, color=cv.INK_MUTED, zorder=2, **vis)
+        cv_.line([p0[0], p1[0]], [p0[1], p1[1]], lw=0.8, **style)
+        tick = norm(add(g.e1, n))
+        for a, p in ((a0, p0), (a1, p1)):
+            e = add(p, n, 0.15 * u)
+            cv_.line([a[0], e[0]], [a[1], e[1]], lw=0.6, **style)  # Hilfslinie vom Stab
+            t0, t1 = add(p, tick, -0.17 * u), add(p, tick, 0.17 * u)
+            cv_.line([t0[0], t1[0]], [t0[1], t1[1]], lw=0.9, **style)
+        mid = add(p0, (p1[0] - p0[0], p1[1] - p0[1]), 0.5)
+        anchor = add(mid, n, 0.14 * u)
+        ha, va = align_for(n)
+        if id(kp) in long_names:  # zu lang fürs Bild: Name im Bild, Ausdruck im Text unter dem Bild
+            text = f"${long_names[id(kp)]}$"
+        else:
+            text = f"${latex_value(dist)}$".replace("\\frac", "\\dfrac")
+        placed.append(cv_.text_box(anchor, text, fs, ha, va))
+        cv_.text(anchor, text, fs=fs, ha=ha, va=va, occupy=False, zorder=6, **vis)
+        pts += [add(p0, (p1[0] - p0[0], p1[1] - p0[1]), t) for t in np.linspace(0, 1, 12)]
+    return pts
 
 
 def _label_anchor(geo, kp: KeyPoint, mi: int, s: float, v: float, k: float, side: int, u: float):

@@ -29,7 +29,7 @@ from .model import (
     Support,
     SystemDef,
 )
-from .symbols import F, M0, a, l, laenge, last, num, q, q0  # noqa: F401  (Re-Export)
+from .symbols import F, M0, a, l, laenge, last, num, q, q0, q1, q2  # noqa: F401  (Re-Export)
 
 TOL = 1e-9
 
@@ -469,23 +469,16 @@ def rahmen(
 
 # --------------------------------------------------------------------------- variante
 
-_VARIANT_TEXT = {
-    ("faser", "oben"): "Faser oben",
-    ("faser", "unten"): "Faser unten",
-    ("x1", "links"): "$x_1$ nach links",
-    ("x1", "rechts"): "$x_1$ nach rechts",
-}
-
-
 def variante(basis: str | SystemDef, id: str, titel: str | None = None, **aenderungen) -> SystemDef:
-    """Kopie eines Systems mit geänderten Parametern, z. B. ``faser="oben"``."""
+    """Kopie eines Systems mit geänderten Parametern, z. B. ``faser="oben"``.
+
+    Der Titel bleibt standardmäßig der des Basissystems: Die Änderung (Faserlage, x1-Richtung) ist in der
+    Zeichnung zu sehen und soll beim Lernen erkannt, nicht im Titel verraten werden.
+    """
     base = REGISTRY[basis] if isinstance(basis, str) else basis
     if base.builder is None:
         raise ModelError(f"{base.id} lässt sich nicht variieren")
-    if titel is None:
-        parts = [_VARIANT_TEXT.get((k, v), f"{k} = {v}") for k, v in aenderungen.items()]
-        titel = f"{base.titel} ({', '.join(parts)})"
-    args = {**base.args, **aenderungen, "id": id, "titel": titel}
+    args = {**base.args, **aenderungen, "id": id, "titel": titel or base.titel}
     if not args.get("kategorie"):
         args["kategorie"] = base.kategorie
     return base.builder(**args)

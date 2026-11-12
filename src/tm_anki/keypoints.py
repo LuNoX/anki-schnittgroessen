@@ -6,8 +6,9 @@ from dataclasses import dataclass, field
 
 import sympy as sp
 
+from .fmt import simplify_radicals
 from .solver import Result, Segment
-from .symbols import S, num
+from .symbols import S, num, numeric_subs
 
 TOL = 1e-9
 
@@ -51,10 +52,17 @@ def extrema(f: sp.Expr, sa, sb) -> list[sp.Expr]:
     roots = []
     lo, hi = num(sa), num(sb)
     for r in sp.solve(sp.Eq(d, 0), S):
-        r_num = complex(r.subs({x: 1 for x in r.free_symbols}))
+        r_num = complex(r.subs(numeric_subs(r)))
         if abs(r_num.imag) < TOL and lo + TOL < r_num.real < hi - TOL:
-            roots.append(sp.simplify(r))
+            roots.append(simplify_radicals(r))
     return roots
+
+
+def extremum_offset(result: Result, kp: "KeyPoint") -> sp.Expr:
+    """Abstand eines Extremums vom Beginn seines Teilbereichs (für die Bemaßung)."""
+    seg = next(g for g in result.members[kp.member].segments
+               if num(g.sa) - TOL <= num(kp.s) <= num(g.sb) + TOL)
+    return simplify_radicals(kp.s - seg.sa)
 
 
 def keypoints(result: Result, qty: str) -> list[KeyPoint]:
@@ -80,7 +88,7 @@ def keypoints(result: Result, qty: str) -> list[KeyPoint]:
             f = g.f(qty)
             if not _is_const(f):
                 for r in extrema(f, g.sa, g.sb):
-                    v = _at(f, r)
+                    v = simplify_radicals(sp.sympify(f).subs(S, r))
                     if _nonzero(v):
                         kp(mi, r, v, "extrem", "mid")
                 i += 1
@@ -138,6 +146,68 @@ def keypoints(result: Result, qty: str) -> list[KeyPoint]:
         seen.add(key)
         unique.append(k)
     return unique
+
+
+CURVE_NAMES = {2: "quadratische Parabel", 3: "kubische Parabel"}
+
+
+def curve_name(degree: int) -> str:
+    return CURVE_NAMES.get(degree, f"Polynom {degree}. Grades")
+
+
+@dataclass
+class CurveRange:
+    """Zusammenhängender Bereich gleicher Kurvenform (Grad >= 2) entlang eines Stabzugs."""
+
+    degree: int
+    members: list[int]  # beteiligte (kollineare) Stäbe in Laufrichtung
+    s_lo: sp.Expr  # Start, gemessen vom Anfang des ersten Stabs
+    s_hi: sp.Expr  # Ende, gemessen vom Anfang des ersten Stabs
+    x1_lo: sp.Expr  # Bogenlänge entlang des Stabzugs
+    x1_hi: sp.Expr
+    full: bool  # deckt die beteiligten Stäbe vollständig ab
+    expr_x1: sp.Expr = sp.S.Zero  # Verlauf als Funktion der Bogenlänge (zum Zusammenfassen)
+
+    @property
+    def name(self) -> str:
+        return curve_name(self.degree)
+
+
+def curve_forms(result: Result, qty: str) -> list[CurveRange]:
+    """Bereiche, in denen der Verlauf weder null, konstant noch linear ist.
+
+    Aufeinanderfolgende Abschnitte werden nur zusammengefasst, wenn sich dieselbe Funktion fortsetzt
+    (z. B. über ein Gelenk ohne Einzellast), nicht bloß derselbe Grad (zwei verschiedene Parabeln).
+    """
+    st = result.structure
+    out: list[CurveRange] = []
+    x = sp.Symbol("x1")
+    for chain in st.chains:
+        cur = None
+        for mi in chain.members:
+            m = st.members[mi]
+            for g in result.members[mi].segments:
+                f = sp.expand(g.f(qty))
+                deg = sp.degree(f, S) if S in f.free_symbols else 0
+                x_lo, x_hi = sp.simplify(m.s0 + g.sa), sp.simplify(m.s0 + g.sb)
+                if deg < 2:
+                    cur = None
+                    continue
+                f_x = sp.expand(f.subs(S, x - m.s0))
+                first = st.members[cur.members[0]] if cur else None
+                if (cur and _same(cur.x1_hi, x_lo) and sp.expand(cur.expr_x1 - f_x) == 0
+                        and abs(num(first.e1[0]) - num(m.e1[0])) < TOL and abs(num(first.e1[1]) - num(m.e1[1])) < TOL):
+                    if mi not in cur.members:
+                        cur.members.append(mi)
+                    cur.x1_hi = x_hi
+                    cur.s_hi = sp.simplify(x_hi - first.s0)
+                else:
+                    cur = CurveRange(deg, [mi], g.sa, g.sb, x_lo, x_hi, False, f_x)
+                    out.append(cur)
+    for c in out:
+        total = sum((st.members[mi].length for mi in c.members), sp.S.Zero)
+        c.full = _same(c.s_lo, 0) and _same(c.s_hi, total)
+    return out
 
 
 def extremes(kps: list[KeyPoint]) -> tuple[KeyPoint | None, KeyPoint | None]:

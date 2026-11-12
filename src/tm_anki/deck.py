@@ -12,8 +12,8 @@ import genanki
 import sympy as sp
 
 from . import conventions as cv
-from .fmt import latex_value
-from .keypoints import KeyPoint, extremes, keypoints
+from .fmt import complex_extrema, latex_value
+from .keypoints import keypoints
 from .model import SystemDef
 from .render import render_card
 from .solver import Result, solve
@@ -37,6 +37,8 @@ CSS = """
 .tm-img img { max-width: 100%; height: auto; }
 .tm-info { display: inline-block; text-align: left; font-size: .9em; margin-top: .6em; }
 .tm-info ul { margin: .15em 0 .5em 1.2em; padding: 0; }
+.tm-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25em 1.6em; margin: .15em 0 .5em 0; }
+.tm-row span { white-space: nowrap; }
 .tm-sec { font-weight: 600; margin-top: .35em; }
 .tm-id { font-size: .7em; color: #6b6a66; margin-top: 1em; }
 .card.nightMode, .card.night_mode { background: #1a1a19; color: #f0efec; }
@@ -112,13 +114,9 @@ def _name_tex(name: str) -> str:
     return f"{base}_{{\\mathrm{{{sub}}}}}" if sub in ("H", "V") else f"{base}_{{{sub}}}"
 
 
-def _is_beam(result: Result) -> bool:
-    st = result.structure
-    return len(st.chains) == 1 and all(num(m.e1[1]) == 0 for m in st.members)
-
-
-def info_html(result: Result, qty: str, kps: list[KeyPoint]) -> str:
-    st = result.structure
+def info_html(result: Result, qty: str, kps: list) -> str:
+    """Auflagerreaktionen. Kennwerte, Kurvenform und Lage der Extrema stehen direkt im Verlauf;
+    nur Ausdrücke, die dafür zu lang sind (z. B. allgemeine Trapezlast), werden hier ausgeschrieben."""
     items = []
     for rv in result.reactions:
         v = sp.simplify(rv.value)
@@ -133,27 +131,29 @@ def info_html(result: Result, qty: str, kps: list[KeyPoint]) -> str:
             sgn = 1 if num(v) > 0 else -1
             arrow = _arrow(sgn * num(rv.direction[0]), -sgn * num(rv.direction[1]))
         items.append(f"\\({name} = {mag}\\) {arrow}")
-    parts = ['<div class="tm-sec">Auflagerreaktionen</div><ul>' + "".join(f"<li>{i}</li>" for i in items) + "</ul>"]
+    parts = [_row("Auflagerreaktionen", items)]
 
     q_tex = cv.LATEX[qty]
-    pos, neg = extremes(kps)
-    beam = _is_beam(result)
     rows = []
-    for label, k in (("\\max", pos), ("\\min", neg)):
-        if k is None:
-            continue
-        m = st.members[k.member]
-        if k.kind == "konst":
-            where = "(konstant)" if beam else f"(konstant auf Stab {m.n0}–{m.n1})"
-        elif beam:
-            where = f"bei \\(x_1 = {latex_value(k.x1)}\\)"
-        else:
-            where = f"bei Stab {m.n0}–{m.n1}, \\(x_1 = {latex_value(k.s)}\\) ab {m.n0}"
-        rows.append(f"\\({label} {q_tex} = {latex_value(k.value)}\\) {where}")
+    for kp, dist, name in complex_extrema(result, kps):
+        label = "\\max" if num(kp.value) > 0 else "\\min"
+        rows.append(f"\\({label} {q_tex} = {latex_value(kp.value)}\\)")
+        if name:
+            rows.append(f"\\({name} = {latex_value(dist)}\\)")
     if rows:
-        parts.append(f'<div class="tm-sec">Extremwerte \\({q_tex}\\)</div><ul>'
-                     + "".join(f"<li>{r}</li>" for r in rows) + "</ul>")
+        parts.append(_row(f"Extremum \\({q_tex}\\) (bei \\({cv.ZERO_OF_SLOPE[qty]}\\))", rows))
     return "".join(parts)
+
+
+#: Layout auch inline, damit es schon greift, wenn Anki den Notiztyp (CSS) beim Import nicht aktualisiert.
+#: Grundlinie statt Oberkante, damit kurze (A_H = 0) und hohe Einträge (Brüche) auf einer Linie stehen.
+_ROW_STYLE = "display:flex;flex-wrap:wrap;align-items:baseline;gap:.25em 1.6em"
+
+
+def _row(title: str, items: list[str]) -> str:
+    """Überschrift + Einträge nebeneinander (bricht bei Platzmangel zwischen Einträgen um)."""
+    spans = "".join(f'<span style="white-space:nowrap">{i}</span>' for i in items)
+    return f'<div class="tm-sec">{title}</div><div class="tm-row" style="{_ROW_STYLE}">{spans}</div>'
 
 
 def _media_name(sid: str, qty: str, side: str, data: bytes, fmt: str) -> str:
@@ -229,6 +229,9 @@ body { font-family: system-ui, sans-serif; background: #fcfcfb; color: #0b0b0b; 
 .row img { width: 100%; height: auto; }
 .meta { grid-column: 1 / -1; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .meta b { font-size: 1.1em; } .info { font-size: .9em; }
+.tm-sec { font-weight: 600; margin-top: .35em; }
+.tm-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25em 1.6em; margin: .15em 0 .5em 0; }
+.tm-row span { white-space: nowrap; }
 @media (max-width: 800px) { .row { grid-template-columns: 1fr; } }
 </style></head><body><h1>TM Schnittgrößen – Vorschau</h1>
 """

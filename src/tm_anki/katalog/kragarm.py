@@ -16,7 +16,7 @@ SYSTEME = [
            lasten=[Strecke(0, l, 0, q0)]),
     balken("KA07", "Kragarm, Einzelmoment am freien Ende", L=l, lager=LINKS, lasten=[Moment(l, M0)]),
     balken("KA08", "Kragarm, schräge Einzelkraft am freien Ende", L=l, lager=LINKS,
-           lasten=[Kraft(l, F, richtung=-135)], gegeben=r"\alpha = 45^\circ"),
+           lasten=[Kraft(l, F, richtung=-135)]),
     balken("KA09", "Kragarm, Zugkraft am freien Ende", L=l, lager=LINKS,
            lasten=[Kraft(l, F, richtung="rechts")]),
     balken("KA10", "Kragarm, Einspannung rechts, Einzelkraft", L=l, lager={l: Einspannung()},

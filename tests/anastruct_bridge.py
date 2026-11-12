@@ -13,7 +13,7 @@ from anastruct import SystemElements
 
 from tm_anki.model import Structure
 from tm_anki.solver import Result
-from tm_anki.symbols import S, num
+from tm_anki.symbols import S, num, numeric_subs
 
 SIGN_N = 1
 SIGN_Q = -1
@@ -139,7 +139,7 @@ def compare(st: Structure, result: Result) -> list[str]:
         m_sign = -1 if swapped else 1
         for qty, key, factor in (("N1", "N", SIGN_N), ("Q3", "Q", SIGN_Q * m.fiber),
                                  ("M2", "M", SIGN_M * m.fiber * m_sign)):
-            f = sp.lambdify(S, seg.f(qty).subs({s: 1 for s in seg.f(qty).free_symbols if s != S}))
+            f = sp.lambdify(S, seg.f(qty).subs(numeric_subs(seg.f(qty))))
             ours = np.array([float(f(t)) for t in ts])
             theirs = np.asarray(res[key], dtype=float) / factor
             if swapped:

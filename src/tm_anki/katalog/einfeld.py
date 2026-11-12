@@ -1,4 +1,4 @@
-from ..dsl import F, Fest, Kraft, Los, M0, Moment, Strecke, a, balken, l, q, q0
+from ..dsl import F, Fest, Kraft, Los, M0, Moment, Strecke, a, balken, l, q, q0, q1, q2
 
 KATEGORIE = "Einfeldträger"
 
@@ -21,17 +21,17 @@ SYSTEME = [
     balken("EF07", "Einfeldträger, Dreieckslast", L=l, lager=fl(l), lasten=[Strecke(0, l, 0, q0)]),
     balken("EF08", "Einfeldträger, Dreieckslast mit Spitze in Feldmitte", L=2 * a, lager=fl(2 * a),
            lasten=[Strecke(0, a, 0, q0), Strecke(a, 2 * a, q0, 0)]),
-    balken("EF09", "Einfeldträger, Trapezlast", L=l, lager=fl(l), lasten=[Strecke(0, l, q, 2 * q)]),
+    balken("EF09", "Einfeldträger, Trapezlast", L=l, lager=fl(l), lasten=[Strecke(0, l, q1, q2)]),
     balken("EF10", "Einfeldträger, Einzelmoment am linken Lager", L=l, lager=fl(l), lasten=[Moment(0, M0)]),
     balken("EF11", "Einfeldträger, Einzelmoment in Feldmitte", L=l, lager=fl(l), lasten=[Moment(l / 2, M0)]),
     balken("EF12", "Einfeldträger, Einzelmoment außermittig", L=3 * a, lager=fl(3 * a),
            lasten=[Moment(a, M0, dreh="rechts")]),
     balken("EF13", "Einfeldträger, schräge Einzelkraft", L=l, lager=fl(l),
-           lasten=[Kraft(l / 2, F, richtung=-45)], gegeben=r"\alpha = 45^\circ"),
+           lasten=[Kraft(l / 2, F, richtung=-45)]),
     balken("EF14", "Einfeldträger, Horizontalkraft", L=2 * a, lager=fl(2 * a),
            lasten=[Kraft(a, F, richtung="rechts")]),
     balken("EF15", "Einfeldträger, Horizontalkraft, Festlager rechts", L=2 * a,
            lager={0: Los(), 2 * a: Fest()}, lasten=[Kraft(a, F, richtung="rechts")]),
     balken("EF16", "Einfeldträger, Streckenlast und Einzelkraft", L=2 * a, lager=fl(2 * a),
-           lasten=[Strecke(0, 2 * a, q), Kraft(a, q * a, label="F")], gegeben=r"F = qa"),
+           lasten=[Strecke(0, 2 * a, q), Kraft(a, F)]),
 ]

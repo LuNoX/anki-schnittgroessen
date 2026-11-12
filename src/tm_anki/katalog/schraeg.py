@@ -11,10 +11,11 @@ FL = {"A": Fest(), "B": Los()}
 SYSTEME = [
     rahmen("SB01", "Schräger Balken, vertikale Einzelkraft in Stabmitte", KNOTEN, STAB, FL,
            lasten=[Kraft(("A", "B", 5 * a / 2), F)]),
+    # Bezug der Streckenlast steht im Titel (in der Zeichnung nicht eindeutig erkennbar)
     rahmen("SB02", "Schräger Balken, Streckenlast je Grundrisslänge", KNOTEN, STAB, FL,
-           lasten=[Strecke("A", "B", q, bezug="projektion")], gegeben=r"q\ \mathrm{je\ Grundrisslänge}"),
+           lasten=[Strecke("A", "B", q, bezug="projektion")]),
     rahmen("SB03", "Schräger Balken, Streckenlast je Stablänge", KNOTEN, STAB, FL,
-           lasten=[Strecke("A", "B", q)], gegeben=r"q\ \mathrm{je\ Stablänge}"),
+           lasten=[Strecke("A", "B", q)]),
     rahmen("SB04", "Schräger Balken, Loslager an der Wand", KNOTEN, STAB, {"A": Fest(), "B": Los(winkel=0)},
            lasten=[Strecke("A", "B", q, bezug="projektion")], gegeben=r"q\ \mathrm{je\ Grundrisslänge}"),
 ]

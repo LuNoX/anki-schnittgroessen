@@ -4,8 +4,12 @@ Erzeugt ein Anki-Deck zum Üben von Schnittgrößenverläufen (Technische Mechan
 
 - **Vorderseite:** System mit Lagern, Lasten, Bemaßung, x1/x3-Dreibein und gestrichelter Faser, dazu
   „Gesucht: Verlauf von N1 / Q3 / M2“. Darunter ein leeres Stabskelett als Antwortschablone.
-- **Rückseite:** dasselbe Bild mit dem eingezeichneten Verlauf, exakten Kennwerten (z. B. 9qa²/32),
-  ⊕/⊖, Auflagerreaktionen und Extremwerten.
+- **Rückseite:** dasselbe Bild mit dem eingezeichneten Verlauf. Teilbereiche sind durch Konturlinien
+  getrennt und haben jeweils ein eigenes ⊕/⊖. An der Kurve stehen exakte Kennwerte (z. B. 9qa²/32), die
+  Kurvenform („quadr.“, „kub.“) und die Lage jedes Extremums als Bemaßung ab Beginn des Teilbereichs.
+  Unter dem Bild stehen die Auflagerreaktionen. Ist ein Extremwert zu lang fürs Bild (z. B. bei der
+  allgemeinen Trapezlast), steht im Bild „max M₂ (Q₃ = 0)“ und an der Bemaßung „x₀“. Wert und x₀ stehen
+  dann in geschlossener Form unter dem Bild.
 
 Alle Werte werden exakt (symbolisch mit SymPy) berechnet. Jedes System im Katalog wird in den Tests
 zusätzlich unabhängig mit einer FEM-Rechnung (anaStruct) gegengeprüft.
@@ -72,7 +76,14 @@ Danach `uv run tm-anki check` und `uv run pytest` ausführen, dann `uv run tm-an
 | `groessen=("M2",)` | nur bestimmte Karten erzeugen (Standard: alle Größen ≠ 0) |
 
 Bei `rahmen()` ist eine Position ein Knotenname oder `(von, nach, abstand)` entlang eines Stabzugs.
-Lasten am besten über **ein** Lastsymbol ausdrücken (z. B. `F = q*a`). `check` warnt sonst.
+
+**Symbole:** Längen `a`, `l`, Lasten `F`, `q`, `q0`, `M0` sowie `q1`, `q2` für allgemeine Trapezlasten.
+Lasten sind unabhängig, damit die Karte allgemein bleibt (z. B. `Strecke(0, 2*a, q)` und `Kraft(a, F)`).
+Weitere Symbole: `P = last("P", zeichenwert=1.5)`, neue Längen: `laenge("h")`. Der Zeichenwert bestimmt
+nur die Zeichnung (z. B. F = 0,75·qa, `q2` = 2·`q1`). Die Ergebnisse bleiben allgemein. `check` warnt,
+wenn unabhängige Lasten denselben Zeichenwert haben. Hängt die *Form* des Verlaufs vom Lastverhältnis ab
+(z. B. Kragarm-Kraft gegen Feldlast), gehört die Bedingung des gezeichneten Falls in `gegeben`, etwa
+`gegeben=r"F < 2qa"`.
 Statisch unbestimmte oder verschiebliche Systeme werden mit einer Fehlermeldung abgelehnt.
 
 Eine neue Kategorie ist ein neues Modul in `katalog/` mit `KATEGORIE` und `SYSTEME`, eingetragen in

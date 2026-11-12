@@ -103,21 +103,22 @@ class Geo:
         return out
 
 
-_TEX_CMD = re.compile(r"\\(frac|left|right|mathrm|sqrt|circ|alpha|,|\s)")
+_TEX_CMD = re.compile(r"\\(dfrac|frac|left|right|mathrm|sqrt|circ|alpha|,|\s)")
 
 
 def text_size(s: str, fs: float, inch: float) -> tuple[float, float]:
     """Grobe Textgröße in Datenkoordinaten; ``inch`` = Zoll je Dateneinheit."""
     em = (fs / 72.0) / inch
     body = s.replace("$", "")
-    tall = "\\frac" in body
+    display = "\\dfrac" in body  # Bruch in voller Größe
+    tall = display or "\\frac" in body
     visible = _TEX_CMD.sub("", body)
     visible = re.sub(r"[{}^_\\]", "", visible)
     n = len(visible)
     if tall:
-        n = max(1, math.ceil(n * 0.6))
-    w = 0.6 * em * max(n, 1)
-    h = em * (2.0 if tall else 1.15)
+        n = max(1, math.ceil(n * (0.65 if display else 0.6)))
+    w = (0.68 if display else 0.6) * em * max(n, 1)
+    h = em * (2.6 if display else (2.0 if tall else 1.15))
     return w, h
 
 

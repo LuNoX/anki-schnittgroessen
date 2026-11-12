@@ -6,7 +6,7 @@ import sympy as sp
 
 from .model import SystemDef
 from .solver import QUANTITIES, Result
-from .symbols import LOAD_SYMBOLS, S, num
+from .symbols import LOAD_SYMBOLS, ZEICHENWERTE, S, num
 
 TOL = 1e-9
 
@@ -34,9 +34,12 @@ def check(sysdef: SystemDef, result: Result) -> tuple[list[str], list[str]]:
     for ll in st.line_loads:
         load_syms |= ll.qa.free_symbols | ll.qb.free_symbols
     load_syms &= set(LOAD_SYMBOLS)
-    if len(load_syms) > 1:
-        warnings.append(f"mehrere unabhängige Lastsymbole {sorted(map(str, load_syms))}: "
-                        "andere Lasten besser über eines ausdrücken (z. B. F = q*a)")
+    # Mehrere unabhängige Lasten sind erlaubt (z. B. q_1, q_2), brauchen aber verschiedene Zeichenwerte,
+    # sonst zeigt die Zeichnung einen Sonderfall (q_1 = q_2) statt des allgemeinen Falls.
+    werte = [ZEICHENWERTE.get(s, 1) for s in load_syms]
+    if len(set(werte)) < len(werte):
+        warnings.append(f"unabhängige Lastsymbole {sorted(map(str, load_syms))} mit gleichem Zeichenwert: "
+                        "Last über eines ausdrücken (z. B. F = q*a) oder last(..., zeichenwert=...) setzen")
 
     # globales Gleichgewicht: Lasten + Reaktionen
     fx = fz = mo = sp.S.Zero

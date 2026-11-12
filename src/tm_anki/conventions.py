@@ -13,7 +13,7 @@ LATEX = {"N1": "N_1", "Q3": "Q_3", "M2": "M_2"}
 PLOT_SIDE = {"N1": "faser", "Q3": "faser", "M2": "faser"}
 
 #: Linienfarbe je Schnittgröße (Referenzpalette, Slots 1-3, alle Paare CVD-validiert)
-COLORS = {"N1": "#2a78d6", "Q3": "#1baf7a", "M2": "#eb6834"}
+COLORS = {"N1": "#1baf7a", "Q3": "#eb6834", "M2": "#2a78d6"}
 FILL_ALPHA = 0.16
 
 INK = "#0b0b0b"  # Text, Stäbe, Lasten
@@ -32,6 +32,16 @@ FIG_MAX_HEIGHT_IN = 7.5
 
 MATH_FONTSET = "cm"
 FONT_SIZE = 10
+#: Schriftgröße der Werte im Verlauf; Brüche dort in voller Größe (\dfrac statt \frac)
+VALUE_FONT_SIZE = 11
+VALUE_FULL_SIZE_FRACTIONS = True
+
+#: Extremum einer Größe liegt dort, wo ihre Ableitung verschwindet (Hinweis bei unhandlichen Werten)
+ZERO_OF_SLOPE = {"M2": "Q_3 = 0", "Q3": "q = 0", "N1": "n = 0"}
+
+#: Kurzbezeichnung der Kurvenform direkt an der Kurve (nur für Grad >= 2; sonst "Grad n")
+CURVE_LABELS = {2: "quadr.", 3: "kub."}
+CURVE_FONT_SIZE = 9.5
 
 
 def plot_sign(qty: str) -> int:

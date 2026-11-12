@@ -73,10 +73,22 @@ def draw_line_loads(cv_: Canvas, color=cv.INK):
             base = add(p_b, d, -math.copysign(gap, qb or 1))
             cv_.line([t_b[0], base[0]], [t_b[1], base[1]], lw=1.1, color=color, zorder=3)
         for text, s_loc in ll.labels:
-            s = num(s_loc)
-            out = scale(d, -math.copysign(1, qn(s) or 1))
-            anchor = add(tail(s), out, 0.25 * u)
-            ha, va = align_for(out)
+            s0 = num(s_loc)
+            cands = [s0]
+            if abs(qa - qb) < 1e-12:  # konstante Last: Beschriftung darf entlang der Last ausweichen
+                span = sb - sa
+                cands += [min(max(s0 + f * span, sa + 0.08 * span), sb - 0.08 * span)
+                          for f in (-0.2, 0.2, -0.35, 0.35)]
+            for s in cands:
+                out = scale(d, -math.copysign(1, qn(s) or 1))
+                anchor = add(tail(s), out, 0.25 * u)
+                ha, va = align_for(out)
+                if cv_.box_free(cv_.text_box(anchor, f"${text}$", cv.FONT_SIZE, ha, va)):
+                    break
+            else:  # nichts frei: an der ursprünglichen Stelle
+                out = scale(d, -math.copysign(1, qn(s0) or 1))
+                anchor = add(tail(s0), out, 0.25 * u)
+                ha, va = align_for(out)
             cv_.text(anchor, f"${text}$", ha=ha, va=va, color=color)
 
 
@@ -145,6 +157,7 @@ def draw_moments(cv_: Canvas, color=cv.INK):
 
 
 def draw_loads(cv_: Canvas, color=cv.INK):
-    draw_line_loads(cv_, color)
+    # Einzellasten zuerst, damit die Beschriftung der Streckenlasten ihnen ausweichen kann
     draw_point_forces(cv_, color)
     draw_moments(cv_, color)
+    draw_line_loads(cv_, color)
