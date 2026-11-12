@@ -112,6 +112,59 @@ def test_formatter(value, expected):
     assert latex_value(value) == expected
 
 
+@pytest.mark.parametrize("sid,qty", [
+    ("EF04", "M2"),  # Parabel unter dem Balken
+    ("RA02", "M2"),  # Riegelmoment im Rahmeninneren
+    ("EF04", "Q3"),  # Querkraft-Rechtecke über den Auflagern: Lagersymbole dürfen überdeckt werden
+    ("KA03", "M2"),  # negatives Moment ragt in die (gedämpfte) Streckenlast
+    ("EF11", "M2"),  # Momentensprung am Momentenpfeil: Bezeichnung M0 wird freigeräumt
+])
+def test_darstellung_auto_im_system(sid, qty):
+    from tm_anki.render import choose_darstellung
+
+    sysdef = {s.id: s for s in SYSTEME}[sid]
+    res = solve(sysdef.structure)
+    assert choose_darstellung(sysdef, res, qty, keypoints(res, qty), "auto") == "im_system"
+
+
+def test_bezeichnungen_liegen_ausserhalb_des_verlaufs():
+    """Im System werden Bezeichnungen (A, B, F, M0 ...) aus der Verlaufsfläche geschoben."""
+    from tm_anki import conventions as cv
+    from tm_anki.render.base import Geo
+    from tm_anki.render.figure import _build_overlay
+
+    import matplotlib.pyplot as plt
+
+    by_id = {s.id: s for s in SYSTEME}
+    for sid, qty in (("EF11", "M2"), ("UE02", "Q3"), ("EF01", "Q3")):
+        res = solve(by_id[sid].structure)
+        geo = Geo(by_id[sid].structure)
+        inch = cv.FIG_WIDTH_IN / (1.4 * geo.S)  # gleicher Maßstab wie choose_darstellung
+        fig, _w, _h, metric = _build_overlay(geo, res, qty, keypoints(res, qty), True, inch)
+        plt.close(fig)
+        assert metric["cover"] <= cv.OVERLAY_MAX_COVER, sid
+        assert metric["label_hits"] == 0, sid
+
+
+def test_darstellung_uebersteuern_und_gleiche_bildgroesse():
+    import io
+
+    from PIL import Image
+
+    from tm_anki.model import ModelError
+    from tm_anki.render import choose_darstellung, render_card
+
+    sysdef = balken("D1", "", L=l, lager={0: Fest(), l: Los()}, lasten=[Strecke(0, l, q)], darstellung="separat")
+    res = solve(sysdef.structure)
+    kps = keypoints(res, "M2")
+    assert choose_darstellung(sysdef, res, "M2", kps) == "separat"  # aus dem Katalog
+    assert choose_darstellung(sysdef, res, "M2", kps, "im_system") == "im_system"  # Aufruf gewinnt
+    front, back = render_card(sysdef, res, "M2", kps, fmt="png", darstellung="im_system")
+    assert Image.open(io.BytesIO(front)).size == Image.open(io.BytesIO(back)).size
+    with pytest.raises(ModelError):
+        balken("D2", "", L=l, lager={0: Fest(), l: Los()}, darstellung="daneben")
+
+
 def test_karten_und_paket(tmp_path):
     by_id = {s.id: s for s in SYSTEME}
     cards = make_cards(by_id["EF05"], fmt="svg") + make_cards(by_id["RA04"], fmt="svg")

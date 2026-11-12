@@ -21,7 +21,9 @@ SYSTEME = [
     balken("EF07", "Einfeldträger, Dreieckslast", L=l, lager=fl(l), lasten=[Strecke(0, l, 0, q0)]),
     balken("EF08", "Einfeldträger, Dreieckslast mit Spitze in Feldmitte", L=2 * a, lager=fl(2 * a),
            lasten=[Strecke(0, a, 0, q0), Strecke(a, 2 * a, q0, 0)]),
-    balken("EF09", "Einfeldträger, Trapezlast", L=l, lager=fl(l), lasten=[Strecke(0, l, q1, q2)]),
+    balken("EF09", "Einfeldträger, Trapezlast", L=l, lager=fl(l), lasten=[Strecke(0, l, q1, q2)],
+           hinweis=r"Trapezlast als Überlagerung einer Rechtecklast \(q_1\) und einer Dreieckslast "
+                   r"\(q_2 - q_1\) betrachten: Auflagerreaktionen und Verläufe beider Anteile addieren."),
     balken("EF10", "Einfeldträger, Einzelmoment am linken Lager", L=l, lager=fl(l), lasten=[Moment(0, M0)]),
     balken("EF11", "Einfeldträger, Einzelmoment in Feldmitte", L=l, lager=fl(l), lasten=[Moment(l / 2, M0)]),
     balken("EF12", "Einfeldträger, Einzelmoment außermittig", L=3 * a, lager=fl(3 * a),

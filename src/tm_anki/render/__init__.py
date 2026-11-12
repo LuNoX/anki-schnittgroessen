@@ -1,3 +1,3 @@
-from .figure import render_card
+from .figure import choose_darstellung, render_card
 
-__all__ = ["render_card"]
+__all__ = ["choose_darstellung", "render_card"]

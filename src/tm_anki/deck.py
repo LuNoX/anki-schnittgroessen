@@ -12,7 +12,7 @@ import genanki
 import sympy as sp
 
 from . import conventions as cv
-from .fmt import complex_extrema, latex_value
+from .fmt import latex_value
 from .keypoints import keypoints
 from .model import SystemDef
 from .render import render_card
@@ -35,27 +35,29 @@ CSS = """
 .tm-ask { font-size: 1.15em; font-weight: 600; margin-bottom: .25em; }
 .tm-given { font-size: .95em; margin-bottom: .35em; }
 .tm-img img { max-width: 100%; height: auto; }
-.tm-info { display: inline-block; text-align: left; font-size: .9em; margin-top: .6em; }
-.tm-info ul { margin: .15em 0 .5em 1.2em; padding: 0; }
-.tm-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25em 1.6em; margin: .15em 0 .5em 0; }
+.tm-info { text-align: center; font-size: .9em; margin-top: .6em; }
+.tm-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: .25em 1.6em;
+          margin: .15em 0 .5em 0; }
 .tm-row span { white-space: nowrap; }
-.tm-sec { font-weight: 600; margin-top: .35em; }
+.tm-sec { font-weight: 600; margin-top: .35em; text-align: center; }
 .tm-id { font-size: .7em; color: #6b6a66; margin-top: 1em; }
 .card.nightMode, .card.night_mode { background: #1a1a19; color: #f0efec; }
 .nightMode .tm-title, .night_mode .tm-title { color: #c3c2b7; }
 .nightMode .tm-img img, .night_mode .tm-img img { filter: invert(1) hue-rotate(180deg); }
 """
 
+# Kopfzeile "M2(x1) = ?": {{Groesse}} enthält "\(M_2\)", der Rest wird im Template angehängt
+# (so bleiben die Felder gleich und ein erneuter Import ändert nur das Template).
 _HEAD = """<div class="tm-card">
 <div class="tm-title">{{Titel}}</div>
-<div class="tm-ask">%s {{Groesse}}</div>
+<div class="tm-ask">{{Groesse}}\\((x_1)%s\\)</div>
 {{#Gegeben}}<div class="tm-given">Gegeben: {{Gegeben}}</div>{{/Gegeben}}
 """
 
-FRONT = _HEAD % "Gesucht: Verlauf von" + """<div class="tm-img">{{Vorderseite}}</div>
+FRONT = _HEAD % " = ?" + """<div class="tm-img">{{Vorderseite}}</div>
 </div>"""
 
-BACK = _HEAD % "Verlauf von" + """<div class="tm-img">{{Rueckseite}}</div>
+BACK = _HEAD % "" + """<div class="tm-img">{{Rueckseite}}</div>
 <div class="tm-info">{{Info}}</div>
 <div class="tm-id">{{ID}} · {{Kategorie}}</div>
 </div>"""
@@ -114,9 +116,9 @@ def _name_tex(name: str) -> str:
     return f"{base}_{{\\mathrm{{{sub}}}}}" if sub in ("H", "V") else f"{base}_{{{sub}}}"
 
 
-def info_html(result: Result, qty: str, kps: list) -> str:
-    """Auflagerreaktionen. Kennwerte, Kurvenform und Lage der Extrema stehen direkt im Verlauf;
-    nur Ausdrücke, die dafür zu lang sind (z. B. allgemeine Trapezlast), werden hier ausgeschrieben."""
+def info_html(result: Result, hinweis: str | None = None) -> str:
+    """Auflagerreaktionen (Kennwerte, Kurvenform und Lage der Extrema stehen direkt im Verlauf) und ein
+    optionaler Lösungshinweis aus dem Katalog."""
     items = []
     for rv in result.reactions:
         v = sp.simplify(rv.value)
@@ -132,28 +134,22 @@ def info_html(result: Result, qty: str, kps: list) -> str:
             arrow = _arrow(sgn * num(rv.direction[0]), -sgn * num(rv.direction[1]))
         items.append(f"\\({name} = {mag}\\) {arrow}")
     parts = [_row("Auflagerreaktionen", items)]
-
-    q_tex = cv.LATEX[qty]
-    rows = []
-    for kp, dist, name in complex_extrema(result, kps):
-        label = "\\max" if num(kp.value) > 0 else "\\min"
-        rows.append(f"\\({label} {q_tex} = {latex_value(kp.value)}\\)")
-        if name:
-            rows.append(f"\\({name} = {latex_value(dist)}\\)")
-    if rows:
-        parts.append(_row(f"Extremum \\({q_tex}\\) (bei \\({cv.ZERO_OF_SLOPE[qty]}\\))", rows))
+    if hinweis:
+        parts.append(f'<div class="tm-sec" style="text-align:center">Hinweis</div>'
+                     f'<div class="tm-hint" style="text-align:center;margin:.15em 0 .5em 0">{hinweis}</div>')
     return "".join(parts)
 
 
 #: Layout auch inline, damit es schon greift, wenn Anki den Notiztyp (CSS) beim Import nicht aktualisiert.
 #: Grundlinie statt Oberkante, damit kurze (A_H = 0) und hohe Einträge (Brüche) auf einer Linie stehen.
-_ROW_STYLE = "display:flex;flex-wrap:wrap;align-items:baseline;gap:.25em 1.6em"
+_ROW_STYLE = "display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:.25em 1.6em"
 
 
 def _row(title: str, items: list[str]) -> str:
-    """Überschrift + Einträge nebeneinander (bricht bei Platzmangel zwischen Einträgen um)."""
+    """Überschrift + Einträge nebeneinander, beides zentriert (bricht bei Platzmangel zwischen Einträgen um)."""
     spans = "".join(f'<span style="white-space:nowrap">{i}</span>' for i in items)
-    return f'<div class="tm-sec">{title}</div><div class="tm-row" style="{_ROW_STYLE}">{spans}</div>'
+    return (f'<div class="tm-sec" style="text-align:center">{title}</div>'
+            f'<div class="tm-row" style="{_ROW_STYLE}">{spans}</div>')
 
 
 def _media_name(sid: str, qty: str, side: str, data: bytes, fmt: str) -> str:
@@ -161,20 +157,21 @@ def _media_name(sid: str, qty: str, side: str, data: bytes, fmt: str) -> str:
     return f"tm_{sid}_{qty}_{side}_{digest}.{fmt}"
 
 
-def make_cards(sysdef: SystemDef, fmt: str = "svg") -> list[Card]:
+def make_cards(sysdef: SystemDef, fmt: str = "svg", darstellung: str | None = None) -> list[Card]:
+    """Karten eines Systems. ``darstellung`` überschreibt System- und Standardeinstellung."""
     result = solve(sysdef.structure)
     qtys = sysdef.groessen or result.nonzero_quantities()
     cards = []
     for qty in qtys:
         kps = keypoints(result, qty)
-        front, back = render_card(sysdef, result, qty, kps, fmt=fmt)
+        front, back = render_card(sysdef, result, qty, kps, fmt=fmt, darstellung=darstellung)
         cards.append(Card(
             sysdef_id=sysdef.id,
             titel=sysdef.titel,
             kategorie=sysdef.kategorie,
             qty=qty,
             gegeben=f"\\({sysdef.gegeben}\\)" if sysdef.gegeben else "",
-            info=info_html(result, qty, kps),
+            info=info_html(result, sysdef.hinweis),
             front_name=_media_name(sysdef.id, qty, "front", front, fmt),
             back_name=_media_name(sysdef.id, qty, "back", back, fmt),
             front=front,
@@ -228,9 +225,10 @@ body { font-family: system-ui, sans-serif; background: #fcfcfb; color: #0b0b0b; 
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; border-top: 1px solid #ddd; padding: 12px 0; }
 .row img { width: 100%; height: auto; }
 .meta { grid-column: 1 / -1; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
-.meta b { font-size: 1.1em; } .info { font-size: .9em; }
-.tm-sec { font-weight: 600; margin-top: .35em; }
-.tm-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25em 1.6em; margin: .15em 0 .5em 0; }
+.meta b { font-size: 1.1em; } .info { font-size: .9em; text-align: center; }
+.tm-sec { font-weight: 600; margin-top: .35em; text-align: center; }
+.tm-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: .25em 1.6em;
+          margin: .15em 0 .5em 0; }
 .tm-row span { white-space: nowrap; }
 @media (max-width: 800px) { .row { grid-template-columns: 1fr; } }
 </style></head><body><h1>TM Schnittgrößen – Vorschau</h1>
@@ -242,7 +240,7 @@ def write_preview(cards: list[Card], out_dir: Path) -> Path:
     for c in cards:
         rows.append(
             f'<div class="row" id="{c.note_id}"><div class="meta"><b>{c.note_id}</b>'
-            f"<span>{_titel_html(c.titel)}</span><span>Gesucht: \\({cv.LATEX[c.qty]}\\)</span>"
+            f"<span>{_titel_html(c.titel)}</span><span>\\({cv.LATEX[c.qty]}(x_1) = ?\\)</span>"
             f"<span>{c.gegeben}</span></div>"
             f'<div><img src="media/{c.front_name}" alt="Vorderseite {c.note_id}"></div>'
             f'<div><img src="media/{c.back_name}" alt="Rückseite {c.note_id}"><div class="info">{c.info}</div></div>'

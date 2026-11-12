@@ -128,6 +128,7 @@ class Canvas:
         self.geo = geo
         self.u = geo.u
         self.inch = inch  # Zoll je Dateneinheit (für Textgrößen-Schätzung)
+        self.obstacle_pts = np.zeros((0, 2))  # z. B. Verlaufsfläche im System (für Dreibein-Platzierung)
         self.boxes: list[tuple[float, float, float, float]] = []
         self.ext = [math.inf, math.inf, -math.inf, -math.inf]
         self.texts = []  # (artist, box)
@@ -149,10 +150,11 @@ class Canvas:
 
     def penalty(self, points, member_clear: float | None = None) -> int:
         clear = 0.3 * self.u if member_clear is None else member_clear
+        m = 0.15 * self.u  # etwas Abstand zu belegten Bereichen (sonst liest man z. B. "x1 q1" als Produkt)
         pen = 0
         for x, y in points:
             for b in self.boxes:
-                if b[0] <= x <= b[2] and b[1] <= y <= b[3]:
+                if b[0] - m <= x <= b[2] + m and b[1] - m <= y <= b[3] + m:
                     pen += 1
                     break
             for g in self.geo.members:
@@ -162,6 +164,10 @@ class Canvas:
                 if math.dist((x, y), q) < clear:
                     pen += 2
                     break
+            if len(self.obstacle_pts):
+                d2 = (self.obstacle_pts[:, 0] - x) ** 2 + (self.obstacle_pts[:, 1] - y) ** 2
+                if d2.min() < (0.3 * self.u) ** 2:
+                    pen += 2
         return pen
 
     # ---- Primitive --------------------------------------------------------

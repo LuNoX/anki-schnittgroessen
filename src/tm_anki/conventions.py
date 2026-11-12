@@ -18,9 +18,20 @@ FILL_ALPHA = 0.16
 
 INK = "#0b0b0b"  # Text, Stäbe, Lasten
 INK_MUTED = "#6b6a66"  # Faser, Bemaßung, Skelett
+#: Rückseite mit Verlauf im System: Streckenlasten und Dreibein gedämpft (wiedererkennbar, nicht dominant)
+SECONDARY_INK = "#a3a29c"
 
 #: maximale Ordinate des Verlaufs relativ zur Systemgröße
 DIAGRAM_SCALE = 0.22
+
+#: Wo der Verlauf gezeichnet wird: "im_system" (direkt auf die Stäbe der Systemzeichnung),
+#: "separat" (auf ein eigenes Stabskelett) oder "auto" (im System, außer es würde zu unleserlich).
+#: Pro System überschreibbar mit balken(..., darstellung=...) bzw. per CLI --darstellung.
+DARSTELLUNG = "auto"
+#: "auto": Symbole (Lager, Lasten, Dreibein) dürfen vom Verlauf überdeckt werden; ihre Bezeichnungen
+#: (A, B, F, q, M0 ...) werden aus der Fläche geschoben. Separat wird nur gezeichnet, wenn danach noch eine
+#: Bezeichnung zu mehr als diesem Anteil verdeckt ist oder ein Wert des Verlaufs mit einer kollidiert.
+OVERLAY_MAX_COVER = 0.05
 
 #: Zeichen-Grundmaß (Lagergröße, Pfeillängen ...): Systemgröße / U_DIVISOR.
 #: Hohe Systeme (Rahmen, schräge Balken) stehen neben ihrem Verlauf und brauchen größere Symbole.
@@ -35,9 +46,6 @@ FONT_SIZE = 10
 #: Schriftgröße der Werte im Verlauf; Brüche dort in voller Größe (\dfrac statt \frac)
 VALUE_FONT_SIZE = 11
 VALUE_FULL_SIZE_FRACTIONS = True
-
-#: Extremum einer Größe liegt dort, wo ihre Ableitung verschwindet (Hinweis bei unhandlichen Werten)
-ZERO_OF_SLOPE = {"M2": "Q_3 = 0", "Q3": "q = 0", "N1": "n = 0"}
 
 #: Kurzbezeichnung der Kurvenform direkt an der Kurve (nur für Grad >= 2; sonst "Grad n")
 CURVE_LABELS = {2: "quadr.", 3: "kub."}

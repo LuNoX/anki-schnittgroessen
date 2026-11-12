@@ -94,17 +94,21 @@ def support_normal(geo: Geo, sup: Support) -> Vec:
     return max(cands, key=worst)
 
 
-def _hatch(cv_: Canvas, center: Vec, t: Vec, n: Vec, half: float, depth: float, count: int = 7):
+#: Lager liegen unter dem Verlauf (Verlaufsfläche hat zorder 1), damit dieser im System darüber liegt
+Z_SUPPORT = 0.5
+
+
+def _hatch(cv_: Canvas, center: Vec, t: Vec, n: Vec, half: float, depth: float, count: int = 7, color=cv.INK):
     """Bodenlinie entlang t durch center, Schraffur auf der -n-Seite."""
     a_, b_ = add(center, t, -half), add(center, t, half)
-    cv_.line([a_[0], b_[0]], [a_[1], b_[1]], lw=1.2, zorder=3)
+    cv_.line([a_[0], b_[0]], [a_[1], b_[1]], lw=1.2, zorder=Z_SUPPORT, color=color)
     for k in np.linspace(-half + depth * 0.6, half, count):
         p = add(center, t, k)
         q = add(add(p, n, -depth), t, -depth * 0.8)
-        cv_.line([p[0], q[0]], [p[1], q[1]], lw=0.8, zorder=3)
+        cv_.line([p[0], q[0]], [p[1], q[1]], lw=0.8, zorder=Z_SUPPORT, color=color)
 
 
-def draw_support(cv_: Canvas, sup: Support):
+def draw_support(cv_: Canvas, sup: Support, color=cv.INK):
     geo, u = cv_.geo, cv_.u
     P = geo.p[sup.node]
     n = support_normal(geo, sup)
@@ -113,37 +117,42 @@ def draw_support(cv_: Canvas, sup: Support):
         h, w = 1.05 * u, 0.62 * u
         B = add(P, n, -h)
         tri = [P, add(B, t, w), add(B, t, -w)]
-        cv_.polygon(tri, fc="white", ec=cv.INK, lw=1.3, zorder=4, joinstyle="miter")
-        cv_.circle(P, 0.11 * u, fc="white", ec=cv.INK, lw=1.1, zorder=5)
+        cv_.polygon(tri, fc="white", ec=color, lw=1.3, zorder=Z_SUPPORT, joinstyle="miter")
+        cv_.circle(P, 0.11 * u, fc="white", ec=color, lw=1.1, zorder=Z_SUPPORT + 0.05)
         if sup.kind == "fest":
-            _hatch(cv_, B, t, n, 0.95 * u, 0.32 * u)
+            _hatch(cv_, B, t, n, 0.95 * u, 0.32 * u, color=color)
             base = B
         else:
             gap = add(B, n, -0.22 * u)
-            _hatch(cv_, gap, t, n, 0.95 * u, 0.32 * u)
+            _hatch(cv_, gap, t, n, 0.95 * u, 0.32 * u, color=color)
             base = gap
         label_anchor = add(add(base, n, 0.3 * u), t, 1.3 * u)
     else:  # Einspannung: Wand senkrecht zu n durch P
         half = 1.05 * u
         a_, b_ = add(P, t, -half), add(P, t, half)
-        cv_.line([a_[0], b_[0]], [a_[1], b_[1]], lw=2.0, zorder=4)
+        cv_.line([a_[0], b_[0]], [a_[1], b_[1]], lw=2.0, zorder=Z_SUPPORT, color=color)
         for k in np.linspace(-half + 0.25 * u, half, 7):
             p = add(P, t, k)
             q = add(add(p, n, -0.42 * u), t, -0.34 * u)
-            cv_.line([p[0], q[0]], [p[1], q[1]], lw=0.8, zorder=3)
+            cv_.line([p[0], q[0]], [p[1], q[1]], lw=0.8, zorder=Z_SUPPORT, color=color)
         label_anchor = add(add(P, n, -0.75 * u), t, 1.3 * u)
     return label_anchor, n
 
 
-def draw_supports(cv_: Canvas, labels: bool = True):
+def draw_supports(cv_: Canvas, labels: bool = True, color=cv.INK):
+    """Lager; ``color`` gilt für die Symbole, die Bezeichnungen bleiben schwarz."""
     anchors = []
     for sup in cv_.geo.st.supports:
-        anchor, n = draw_support(cv_, sup)
+        anchor, n = draw_support(cv_, sup, color=color)
         anchors.append((sup, anchor, n))
     if labels:
+        geo = cv_.geo
+        center = (0.5 * (geo.x0 + geo.x1), 0.5 * (geo.y0 + geo.y1))
         for sup, anchor, n in anchors:
-            _place_label(cv_, sup.label, cv_.geo.p[sup.node], [anchor, _mirror(cv_.geo.p[sup.node], anchor, n)],
-                         fs=cv.FONT_SIZE)
+            cands = [anchor, _mirror(geo.p[sup.node], anchor, n)]
+            # bevorzugt auf der Außenseite des Systems (dort liegt kein Verlauf, wenn er im System gezeichnet wird)
+            cands.sort(key=lambda c: -math.dist(c, center))
+            _place_label(cv_, sup.label, geo.p[sup.node], cands, fs=cv.FONT_SIZE)
 
 
 def _mirror(P: Vec, anchor: Vec, n: Vec) -> Vec:
@@ -168,7 +177,7 @@ def _place_label(cv_: Canvas, text: str, ref: Vec, cands: list[Vec], fs: float, 
 # --------------------------------------------------------------------------- Dreibein
 
 
-def draw_triads(cv_: Canvas):
+def draw_triads(cv_: Canvas, color=cv.INK):
     geo, u = cv_.geo, cv_.u
     L_ax = 1.35 * u
     for chain in geo.st.chains:
@@ -200,12 +209,12 @@ def draw_triads(cv_: Canvas):
                 best, best_pen = O, pen
         O = best
         t1, t3 = add(O, g.e1, L_ax), add(O, g.e3, L_ax)
-        cv_.arrow(O, t1, lw=1.1, head=8)
-        cv_.arrow(O, t3, lw=1.1, head=8)
+        cv_.arrow(O, t1, lw=1.1, head=8, color=color)
+        cv_.arrow(O, t3, lw=1.1, head=8, color=color)
         for tip, d, name in ((t1, g.e1, "x_1"), (t3, g.e3, "x_3")):
             anchor = add(tip, d, 0.22 * u)
             ha, va = align_for(d)
-            cv_.text(anchor, f"${name}$", fs=cv.FONT_SIZE - 1, ha=ha, va=va)
+            cv_.text(anchor, f"${name}$", fs=cv.FONT_SIZE - 1, ha=ha, va=va, color=color)
 
 
 # --------------------------------------------------------------------------- Bemaßung

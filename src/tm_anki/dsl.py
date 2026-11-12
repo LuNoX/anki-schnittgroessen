@@ -310,6 +310,14 @@ def _register(sysdef: SystemDef) -> SystemDef:
     return sysdef
 
 
+DARSTELLUNGEN = ("auto", "im_system", "separat")
+
+
+def _check_darstellung(darstellung: str | None):
+    if darstellung is not None and darstellung not in DARSTELLUNGEN:
+        raise ModelError(f"darstellung muss eine von {DARSTELLUNGEN} sein, nicht {darstellung!r}")
+
+
 # --------------------------------------------------------------------------- balken
 
 
@@ -325,10 +333,14 @@ def balken(
     groessen=None,
     gegeben: str | None = None,
     kategorie: str | None = None,
+    darstellung: str | None = None,
+    hinweis: str | None = None,
 ) -> SystemDef:
     """Gerader, horizontaler Balken der Länge ``L``; Positionen von links gemessen."""
     args = dict(id=id, titel=titel, L=L, lager=lager, lasten=lasten, gelenke=gelenke, faser=faser,
-                x1=x1, groessen=groessen, gegeben=gegeben, kategorie=kategorie)
+                x1=x1, groessen=groessen, gegeben=gegeben, kategorie=kategorie, darstellung=darstellung,
+                hinweis=hinweis)
+    _check_darstellung(darstellung)
     L = sp.sympify(L)
     if faser not in ("unten", "oben") or x1 not in ("rechts", "links"):
         raise ModelError("balken: faser in {unten, oben}, x1 in {rechts, links}")
@@ -377,7 +389,8 @@ def balken(
 
     return _register(SystemDef(
         id=id, titel=titel, kategorie=kategorie or "", structure=b.structure(supports, hinge_nodes, hinge_labels),
-        groessen=tuple(groessen) if groessen else None, gegeben=gegeben, builder=balken, args=args,
+        groessen=tuple(groessen) if groessen else None, gegeben=gegeben, darstellung=darstellung, hinweis=hinweis, builder=balken,
+        args=args,
     ))
 
 
@@ -395,13 +408,17 @@ def rahmen(
     groessen=None,
     gegeben: str | None = None,
     kategorie: str | None = None,
+    darstellung: str | None = None,
+    hinweis: str | None = None,
 ) -> SystemDef:
     """Allgemeines ebenes Stabwerk aus Stabzügen.
 
     Lastpositionen: Knotenname oder ``(von, nach, abstand)`` entlang des Stabzugs.
     """
     args = dict(id=id, titel=titel, knoten=knoten, staebe=staebe, lager=lager, lasten=lasten,
-                gelenke=gelenke, groessen=groessen, gegeben=gegeben, kategorie=kategorie)
+                gelenke=gelenke, groessen=groessen, gegeben=gegeben, kategorie=kategorie,
+                darstellung=darstellung, hinweis=hinweis)
+    _check_darstellung(darstellung)
     nodes = {n: Node(n, sp.sympify(x), -sp.sympify(y)) for n, (x, y) in knoten.items()}
     chains = []
     for st in staebe:
@@ -463,7 +480,8 @@ def rahmen(
 
     return _register(SystemDef(
         id=id, titel=titel, kategorie=kategorie or "", structure=b.structure(supports, list(gelenke), hinge_labels),
-        groessen=tuple(groessen) if groessen else None, gegeben=gegeben, builder=rahmen, args=args,
+        groessen=tuple(groessen) if groessen else None, gegeben=gegeben, darstellung=darstellung, hinweis=hinweis, builder=rahmen,
+        args=args,
     ))
 
 

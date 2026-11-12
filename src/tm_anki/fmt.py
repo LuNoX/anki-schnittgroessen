@@ -257,34 +257,19 @@ def _latex_sum(expr: sp.Expr) -> str:
 SIMPLE_OPS = 14
 
 
-#: Bemaßungen im Verlauf müssen noch kürzer sein (sonst steht dort x_0 und der Ausdruck im Text)
+#: Bemaßungen im Verlauf müssen noch kürzer sein (sonst wird die Lage des Extremums nicht bemaßt)
 DIM_OPS = 8
 
 
 def is_simple(value, max_ops: int = SIMPLE_OPS) -> bool:
+    """Kurz genug für die Zeichnung? Unhandliche Extrema (z. B. allgemeine Trapezlast) werden nicht
+    angegeben; dafür gibt es im Katalog ``hinweis=`` (z. B. "als Überlagerung betrachten")."""
     v = sp.sympify(value)
     if _radical_base(v) is not None:
         v = simplify_radicals(v)
     else:
         v = sp.factor(v)
     return sp.count_ops(v) <= max_ops
-
-
-def complex_extrema(result, kps) -> list[tuple]:
-    """Extrema, deren Wert oder Lage zu lang fürs Bild ist: [(KeyPoint, Abstand, Name der Lage)].
-    Die Lage heißt im Bild x_0 (x_0', x_0'' ...) und wird im Text ausgeschrieben."""
-    from .keypoints import extremum_offset  # zyklischen Import vermeiden
-
-    out = []
-    for kp in kps:
-        if kp.kind != "extrem":
-            continue
-        dist = extremum_offset(result, kp)
-        if is_simple(kp.value) and is_simple(dist, DIM_OPS):
-            continue
-        name = "x_0" + "'" * len(out) if not is_simple(dist, DIM_OPS) else None
-        out.append((kp, dist, name))
-    return out
 
 
 def math(value) -> str:

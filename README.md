@@ -3,13 +3,13 @@
 Erzeugt ein Anki-Deck zum Üben von Schnittgrößenverläufen (Technische Mechanik / Statik).
 
 - **Vorderseite:** System mit Lagern, Lasten, Bemaßung, x1/x3-Dreibein und gestrichelter Faser, dazu
-  „Gesucht: Verlauf von N1 / Q3 / M2“. Darunter ein leeres Stabskelett als Antwortschablone.
+  die Frage „M₂(x₁) = ?“ (bzw. N₁, Q₃).
 - **Rückseite:** dasselbe Bild mit dem eingezeichneten Verlauf. Teilbereiche sind durch Konturlinien
   getrennt und haben jeweils ein eigenes ⊕/⊖. An der Kurve stehen exakte Kennwerte (z. B. 9qa²/32), die
   Kurvenform („quadr.“, „kub.“) und die Lage jedes Extremums als Bemaßung ab Beginn des Teilbereichs.
-  Unter dem Bild stehen die Auflagerreaktionen. Ist ein Extremwert zu lang fürs Bild (z. B. bei der
-  allgemeinen Trapezlast), steht im Bild „max M₂ (Q₃ = 0)“ und an der Bemaßung „x₀“. Wert und x₀ stehen
-  dann in geschlossener Form unter dem Bild.
+  Unter dem Bild stehen die Auflagerreaktionen und ggf. ein Lösungshinweis. Unhandliche Extremwerte
+  (z. B. bei der allgemeinen Trapezlast) werden nicht angegeben; dort hilft stattdessen der Hinweis
+  (bei EF09: als Überlagerung von Rechteck- und Dreieckslast rechnen).
 
 Alle Werte werden exakt (symbolisch mit SymPy) berechnet. Jedes System im Katalog wird in den Tests
 zusätzlich unabhängig mit einer FEM-Rechnung (anaStruct) gegengeprüft.
@@ -27,6 +27,20 @@ uv run pytest                         # Tests inkl. FEM-Gegenrechnung
 
 Das `.apkg` in Anki über *Datei → Importieren* laden. Wird das Deck nach Änderungen neu gebaut und erneut
 importiert, aktualisiert Anki die vorhandenen Karten (stabile IDs). Der Lernfortschritt bleibt dabei erhalten.
+
+## Darstellung: im System oder separat
+
+Standardmäßig (`darstellung="auto"`) wird der Verlauf direkt in die Systemzeichnung eingezeichnet.
+Auf der Rückseite sind Lager, Streckenlasten und Dreibein dann gedämpft gezeichnet und dürfen vom Verlauf
+überdeckt werden. Wer die Vorderseite kennt, erkennt sie wieder. Ihre Bezeichnungen (A, B, F, q, M₀ …)
+werden aus der Verlaufsfläche herausgeschoben und halten Abstand zu den Werten. Nur wenn sich eine
+Bezeichnung nicht freiräumen lässt oder ein Wert mit ihr kollidiert, wird der Verlauf auf ein separates
+Stabskelett unter bzw. neben dem System gezeichnet.
+
+- global: `DARSTELLUNG` in [conventions.py](src/tm_anki/conventions.py) (`"auto"`, `"im_system"`, `"separat"`),
+  Schwelle `OVERLAY_MAX_COVER`
+- pro System: `balken(..., darstellung="separat")` bzw. `rahmen(...)`
+- beim Bauen für alle Karten: `uv run tm-anki build --darstellung im_system`
 
 ## Konventionen
 
@@ -72,8 +86,10 @@ Danach `uv run tm-anki check` und `uv run pytest` ausführen, dann `uv run tm-an
 | `gelenke=[...]` | Momentengelenke (Positionen bzw. Knotennamen) |
 | `faser="unten"/"oben"`, `x1="rechts"/"links"` | nur bei `balken()`: Lage der Faser und Laufrichtung |
 | `Stab(..., faser="rechts"/"links")` | nur bei `rahmen()`: Faserseite in Laufrichtung |
-| `gegeben=r"F = qa"` | Zusatzangabe auf der Karte (LaTeX) |
+| `gegeben=r"F < 2qa"` | Zusatzangabe auf der Vorderseite (LaTeX) |
+| `hinweis="…"` | Lösungshinweis auf der Rückseite (Text, Formeln in `\( … \)`) |
 | `groessen=("M2",)` | nur bestimmte Karten erzeugen (Standard: alle Größen ≠ 0) |
+| `darstellung="separat"` | Verlauf für dieses System immer separat (oder `"im_system"`; Standard `"auto"`) |
 
 Bei `rahmen()` ist eine Position ein Knotenname oder `(von, nach, abstand)` entlang eines Stabzugs.
 

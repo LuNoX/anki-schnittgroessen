@@ -24,12 +24,12 @@ def _select(patterns: str | None):
     return chosen
 
 
-def _cards_for(sid: str, fmt: str):
+def _cards_for(sid: str, fmt: str, darstellung: str | None = None):
     from .deck import make_cards
     from .katalog import alle_systeme
 
     sysdef = next(s for s in alle_systeme() if s.id == sid)
-    return make_cards(sysdef, fmt)
+    return make_cards(sysdef, fmt, darstellung)
 
 
 def cmd_list(args) -> int:
@@ -72,11 +72,11 @@ def cmd_build(args) -> int:
     jobs = max(1, args.jobs)
     if jobs == 1:
         for s in systeme:
-            results[s.id] = _cards_for(s.id, args.format)
+            results[s.id] = _cards_for(s.id, args.format, args.darstellung)
             print(f"  {s.id}: {len(results[s.id])} Karte(n)", flush=True)
     else:
         with ProcessPoolExecutor(max_workers=jobs) as ex:
-            futs = {ex.submit(_cards_for, s.id, args.format): s.id for s in systeme}
+            futs = {ex.submit(_cards_for, s.id, args.format, args.darstellung): s.id for s in systeme}
             for fut in as_completed(futs):
                 sid = futs[fut]
                 results[sid] = fut.result()
@@ -107,6 +107,8 @@ def main(argv: list[str] | None = None) -> int:
     p_build = sub.add_parser("build", help="Deck (.apkg) bauen")
     p_build.add_argument("--only", help="IDs/Muster, z. B. EF05,RA*")
     p_build.add_argument("--format", choices=["svg", "png"], default="svg")
+    p_build.add_argument("--darstellung", choices=["auto", "im_system", "separat"],
+                         help="Verlauf im System oder separat zeichnen (Standard: Katalog bzw. conventions.py)")
     p_build.add_argument("--preview", action="store_true", help="zusätzlich build/preview.html schreiben")
     p_build.add_argument("--out", default="build")
     p_build.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))

@@ -146,6 +146,8 @@ class SystemDef:
     kategorie: str
     structure: Structure
     groessen: tuple[str, ...] | None = None  # None = automatisch (alle != 0)
-    gegeben: str | None = None  # LaTeX, z. B. r"F = qa"
+    gegeben: str | None = None  # LaTeX, z. B. r"F < 2qa"
+    hinweis: str | None = None  # Lösungshinweis auf der Rückseite (HTML/MathJax), z. B. "als Überlagerung ..."
+    darstellung: str | None = None  # "auto" | "im_system" | "separat"; None = conventions.DARSTELLUNG
     builder: Callable[..., "SystemDef"] | None = None
     args: dict[str, Any] = field(default_factory=dict)

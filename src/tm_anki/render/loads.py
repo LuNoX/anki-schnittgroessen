@@ -24,6 +24,17 @@ def draw_line_loads(cv_: Canvas, color=cv.INK):
     qmax = max(max(abs(num(ll.qa)), abs(num(ll.qb))) for ll in st.line_loads) or 1.0
     Hq, gap = 2.0 * u, 0.1 * u
 
+    # gleiche Beschriftung am selben Punkt (z. B. Spitze zweier Dreieckslasten) nur einmal, mittig
+    from collections import Counter
+
+    shared_labels: Counter = Counter()
+    for ll in st.line_loads:
+        g_ = geo.members[ll.member]
+        for text, s_loc in ll.labels:
+            p = g_.point(num(s_loc))
+            shared_labels[(text, round(p[0], 6), round(p[1], 6))] += 1
+    drawn_labels: set = set()
+
     # Gruppenenden bestimmen (keine Abschlusslinie an inneren Stoßstellen einer Gruppe)
     def ends(ll):
         g = geo.members[ll.member]
@@ -74,9 +85,20 @@ def draw_line_loads(cv_: Canvas, color=cv.INK):
             cv_.line([t_b[0], base[0]], [t_b[1], base[1]], lw=1.1, color=color, zorder=3)
         for text, s_loc in ll.labels:
             s0 = num(s_loc)
+            span = sb - sa
+            key = (text, round(g.point(s0)[0], 6), round(g.point(s0)[1], 6))
+            if key in drawn_labels:  # z. B. Spitze zweier Dreieckslasten: gleiche Beschriftung nur einmal
+                continue
+            drawn_labels.add(key)
+            shared = shared_labels[key] > 1
+            if abs(qa - qb) > 1e-12 and not shared:  # am Lastende etwas nach innen (Platz für Dreibein)
+                inset = min(0.45 * u, 0.15 * span)
+                if abs(s0 - sa) < 1e-9:
+                    s0 += inset
+                elif abs(s0 - sb) < 1e-9:
+                    s0 -= inset
             cands = [s0]
             if abs(qa - qb) < 1e-12:  # konstante Last: Beschriftung darf entlang der Last ausweichen
-                span = sb - sa
                 cands += [min(max(s0 + f * span, sa + 0.08 * span), sb - 0.08 * span)
                           for f in (-0.2, 0.2, -0.35, 0.35)]
             for s in cands:
@@ -105,7 +127,17 @@ def draw_point_forces(cv_: Canvas, color=cv.INK):
         gap = 0.32 * u if (pf.at.node is not None and pf.at.node in st.hinges) else 0.1 * u
         dirs = geo.dirs_at_point(P)
         along = any(dot(m, scale(d, -1)) > 0.9 for m in dirs)
-        if along:  # Pfeil würde auf dem Stab liegen: vom Punkt weg zeichnen (Zug)
+        through = along and any(dot(m, d) > 0.9 for m in dirs)  # Stab auch vor dem Punkt: Kraft im Stabinneren
+        if through:
+            # axiale Kraft im Stabinneren: parallel zum Stab, leicht zur faserabgewandten Seite versetzt,
+            # Spitze an der Angriffsstelle (sonst läge der Pfeil auf der Stabachse)
+            g_ax = next(g for g in geo.members if abs(abs(dot(g.e1, d)) - 1) < 1e-6)
+            n_off = scale(g_ax.e3, -1)
+            tip = add(add(P, d, -gap), n_off, 0.5 * u)
+            tail = add(tip, d, -Lf)
+            anchor = add(tail, d, -0.25 * u)
+            out = scale(d, -1)
+        elif along:  # Pfeil würde auf dem Stab liegen: vom Punkt weg zeichnen (Zug)
             tail = add(P, d, gap)
             tip = add(tail, d, Lf)
             anchor = add(tip, d, 0.25 * u)
