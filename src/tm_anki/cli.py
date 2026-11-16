@@ -96,6 +96,18 @@ def cmd_build(args) -> int:
     return 0
 
 
+def cmd_check_deck(args) -> int:
+    from .decklint import pruefe_paket
+
+    b = pruefe_paket(Path(args.apkg))
+    for w in b.warnungen:
+        print(f"Warnung: {w}")
+    for e in b.fehler:
+        print(f"FEHLER: {e}")
+    print(f"\n{b.notizen} Notizen, {b.medien} Medien: " + ("Paket ok" if b.ok else f"{len(b.fehler)} Fehler"))
+    return 0 if b.ok and not (args.strict and b.warnungen) else 1
+
+
 def cmd_diff(args) -> int:
     from .diff import schreibe_kommentar
 
@@ -144,6 +156,11 @@ def main(argv: list[str] | None = None) -> int:
     p_diff.add_argument("--out", default="build/diff", help="Zielordner für comment.md und img/")
     p_diff.add_argument("--basis-fehlt", action="store_true", help="Hinweis: Basis-Build ist fehlgeschlagen")
     p_diff.set_defaults(func=cmd_diff)
+
+    p_cd = sub.add_parser("check-deck", help="fertiges .apkg prüfen (IDs, Medien, Felder, HTML, MathJax, SVG)")
+    p_cd.add_argument("apkg", nargs="?", default="build/TM_Schnittgroessen.apkg")
+    p_cd.add_argument("--strict", action="store_true", help="auch bei Warnungen mit Fehlercode beenden")
+    p_cd.set_defaults(func=cmd_check_deck)
 
     args = p.parse_args(argv)
     return args.func(args)
