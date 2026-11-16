@@ -1,0 +1,39 @@
+# Git-Hooks: einmalig `uv run pre-commit install --hook-type pre-commit --hook-type pre-push`
+# Alle Hooks nutzen die Versionen aus uv.lock (language: system + uv run), genau wie CI.
+#   pre-commit: ruff format, ruff check, ty, mypy   (zusammen unter 2 s)
+#   pre-push:   pylint                              (ca. 10 s)
+# Tests laufen in CI (checks.yml). Lokal: uv run pytest
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --locked ruff format --force-exclude
+        language: system
+        types: [python]
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --locked ruff check --fix --force-exclude
+        language: system
+        types: [python]
+      - id: ty
+        name: ty
+        entry: uv run --locked ty check
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: mypy
+        name: mypy
+        entry: uv run --locked mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: pylint
+        name: pylint
+        entry: uv run --locked pylint src tests
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]

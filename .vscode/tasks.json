@@ -1,0 +1,95 @@
+{
+  // Spiegelt die CI-Schritte (checks.yml, pr.yml). Terminal → Task ausführen …
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Lint: alles (wie CI)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Lint: ruff format", "Lint: ruff check", "Lint: ty", "Lint: mypy", "Lint: pylint"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint: ruff format",
+      "type": "shell",
+      "command": "uv run ruff format",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint: ruff check",
+      "type": "shell",
+      "command": "uv run ruff check --fix --output-format=concise",
+      "problemMatcher": {
+        "owner": "ruff",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": { "regexp": "^(.+?):(\\d+):(\\d+): (\\S+) (.*)$", "file": 1, "line": 2, "column": 3, "code": 4, "message": 5 }
+      }
+    },
+    {
+      "label": "Lint: ty",
+      "type": "shell",
+      "command": "uv run ty check --output-format=concise",
+      "problemMatcher": {
+        "owner": "ty",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": { "regexp": "^(.+?):(\\d+):(\\d+): (\\w+)\\[(\\S+)\\] (.*)$", "file": 1, "line": 2, "column": 3, "severity": 4, "code": 5, "message": 6 }
+      }
+    },
+    {
+      "label": "Lint: mypy",
+      "type": "shell",
+      "command": "uv run mypy",
+      "problemMatcher": {
+        "owner": "mypy",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": { "regexp": "^(.+?):(\\d+): (error|warning|note): (.*)$", "file": 1, "line": 2, "severity": 3, "message": 4 }
+      }
+    },
+    {
+      "label": "Lint: pylint",
+      "type": "shell",
+      "command": "uv run pylint src tests --output-format=parseable",
+      "problemMatcher": {
+        "owner": "pylint",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": { "regexp": "^(.+?):(\\d+): \\[([^\\]]+)\\] (.*)$", "file": 1, "line": 2, "code": 3, "message": 4 }
+      }
+    },
+    {
+      "label": "Tests",
+      "type": "shell",
+      "command": "uv run pytest",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Katalog prüfen",
+      "type": "shell",
+      "command": "uv run tm-anki check",
+      "problemMatcher": []
+    },
+    {
+      "label": "Deck bauen + Vorschau",
+      "type": "shell",
+      "command": "uv run tm-anki build --preview && uv run tm-anki check-deck --strict",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Deck bauen: Auswahl",
+      "type": "shell",
+      "command": "uv run tm-anki build --preview --only \"${input:only}\"",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Git-Hooks installieren",
+      "type": "shell",
+      "command": "uv run pre-commit install",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    { "id": "only", "type": "promptString", "description": "System-IDs oder Muster, z. B. EF05,RA*", "default": "EF*" }
+  ]
+}

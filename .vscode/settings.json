@@ -1,0 +1,37 @@
+{
+  // Interpreter aus `uv sync`
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
+  "python.terminal.activateEnvironment": true,
+
+  // Beim Speichern: ruff formatiert, sortiert Imports und behebt sichere Funde
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    },
+    "editor.rulers": [120]
+  },
+
+  // Typprüfung live: ty als Sprachserver, mypy und pylint als Diagnose (Konfiguration jeweils aus pyproject.toml)
+  "python.languageServer": "None",
+  "mypy-type-checker.importStrategy": "fromEnvironment",
+  "mypy-type-checker.preferDaemon": true,
+  "pylint.importStrategy": "fromEnvironment",
+  "pylint.lintOnChange": false,
+
+  // Tests im Test-Explorer
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": ["tests"],
+
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true
+  },
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
+}

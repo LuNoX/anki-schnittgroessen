@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "charliermarsh.ruff",
+    "astral-sh.ty",
+    "ms-python.mypy-type-checker",
+    "ms-python.pylint",
+    "github.vscode-github-actions",
+    "tamasfe.even-better-toml"
+  ],
+  "unwantedRecommendations": ["ms-python.black-formatter", "ms-python.isort", "ms-python.flake8"]
+}
