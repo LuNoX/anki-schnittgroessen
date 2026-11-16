@@ -1,0 +1,50 @@
+# Lint und Tests. Wird von pr.yml und release.yml eingebunden und läuft zusätzlich bei jedem Push auf main.
+name: Checks
+
+on:
+  workflow_call:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+      - name: Abhängigkeiten installieren
+        run: uv sync --locked
+      # Jeder Linter läuft auch, wenn ein vorheriger fehlschlägt, damit alle Funde auf einmal sichtbar sind.
+      - name: ruff format
+        run: uv run --locked ruff format --check --diff
+      - name: ruff check
+        if: success() || failure()
+        run: uv run --locked ruff check --output-format=github
+      - name: ty
+        if: success() || failure()
+        run: uv run --locked ty check --output-format=github
+      - name: mypy
+        if: success() || failure()
+        run: uv run --locked mypy
+      - name: pylint
+        if: success() || failure()
+        run: uv run --locked pylint src tests --output-format=github
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+      - name: Abhängigkeiten installieren
+        run: uv sync --locked
+      - name: Katalog prüfen
+        run: uv run --locked tm-anki check
+      - name: Tests inkl. FEM-Gegenrechnung und Paketprüfung
+        run: uv run --locked pytest

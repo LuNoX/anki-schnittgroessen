@@ -1,0 +1,90 @@
+# Bei jedem Versions-Tag (z. B. v1.2): testen, Deck bauen, Release mit .apkg anlegen und die
+# Vorschau als Landing Page auf GitHub Pages veröffentlichen.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  build:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+      - name: Tag passt zur Version in pyproject.toml
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(uv version --short)
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::Tag $TAG passt nicht zu version = \"$VERSION\" in pyproject.toml (erwartet v$VERSION)"
+            exit 1
+          fi
+      - name: Deck und Vorschau bauen
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: >-
+          uv run --locked --no-dev tm-anki build --preview
+          --release "$TAG"
+          --download-url "$REPO_URL/releases/download/$TAG/TM_Schnittgroessen.apkg"
+          --repo-url "$REPO_URL"
+      - name: Paket prüfen
+        run: uv run --locked --no-dev tm-anki check-deck --strict
+      - name: Seite zusammenstellen
+        run: |
+          mkdir site
+          cp build/preview.html site/index.html
+          cp -r build/media site/media
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deck
+          path: build/TM_Schnittgroessen.apkg
+          if-no-files-found: error
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: deck
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: >-
+          gh release create "$TAG" TM_Schnittgroessen.apkg
+          --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes --verify-tag
+
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
