@@ -26,10 +26,15 @@ uv run tm-anki check                  # alle Systeme lösen und auf Plausibilit�
 uv run tm-anki list                   # Katalog anzeigen
 uv run tm-anki build --only "EF*,RA04"  # nur einen Teil bauen (z. B. zum Testen)
 uv run pytest                         # Tests inkl. FEM-Gegenrechnung
+uv run tm-anki check-deck            # fertiges .apkg prüfen (IDs, Medien, Felder, HTML, MathJax, SVG)
 ```
 
 Das `.apkg` in Anki über *Datei → Importieren* laden. Wird das Deck nach Änderungen neu gebaut und erneut
 importiert, aktualisiert Anki die vorhandenen Karten (stabile IDs). Der Lernfortschritt bleibt dabei erhalten.
+
+Das fertige Deck gibt es auch ohne eigenen Build unter
+[Releases](https://github.com/LuNoX/anki-schnittgroessen/releases/latest). Alle Karten lassen sich auf der
+[Projektseite](https://lunox.github.io/anki-schnittgroessen/) ansehen.
 
 ## Darstellung: im System oder separat
 
@@ -121,8 +126,48 @@ Eine neue Kategorie ist ein neues Modul in `katalog/` mit `KATEGORIE` und `SYSTE
 | `keypoints.py`, `fmt.py` | Kennwerte (Ränder, Sprünge, Extrema) und LaTeX-Formatierung |
 | `render/` | Zeichnung mit matplotlib (System, Lasten, Verlauf), SVG |
 | `deck.py`, `cli.py` | Anki-Paket (genanki), Vorschau, Kommandozeile |
+| `diff.py` | Karten-Diff zweier Builds für PR-Kommentare (`tm-anki diff`) |
+| `decklint.py` | Prüfung des fertigen `.apkg` (`tm-anki check-deck`) |
 | `checks.py` | Invarianten: Gleichgewicht, M = 0 an Gelenken, dM/dx = Q, dQ/dx = −q, Sprünge |
 | `tests/anastruct_bridge.py` | Übersetzung nach anaStruct für die unabhängige FEM-Gegenrechnung |
+
+## Entwicklung
+
+Code-Qualität prüfen vier Werkzeuge. Die Konfiguration steht in [pyproject.toml](pyproject.toml):
+
+```bash
+uv run ruff format          # formatieren (der Katalog ist ausgenommen, dort gilt: ein System pro Eintrag)
+uv run ruff check --fix     # Linter
+uv run ty check             # Typprüfung
+uv run mypy                 # Typprüfung
+uv run pylint src tests     # Linter
+```
+
+Git-Hooks einmalig mit `uv run pre-commit install` einrichten. Beim Commit laufen dann ruff, ty und mypy
+(unter 2 s), beim Push zusätzlich pylint. In VS Code formatiert ruff beim Speichern. Die empfohlenen
+Erweiterungen und Tasks für Lint, Tests und Build liegen in [.vscode/](.vscode/).
+
+## CI und Releases
+
+| Workflow | Auslöser | Was passiert |
+|---|---|---|
+| [checks.yml](.github/workflows/checks.yml) | Push auf `main`, eingebunden in PR und Release | Lint (ruff, ty, mypy, pylint), `tm-anki check`, Tests |
+| [pr.yml](.github/workflows/pr.yml) | Pull Request | Checks, Karten von Ziel-Branch und PR bauen, Paket prüfen, Diff erzeugen |
+| [pr-kommentar.yml](.github/workflows/pr-kommentar.yml) | nach `pr.yml` | Diff als Kommentar im PR (mit Bildern), wird bei neuen Pushes aktualisiert |
+| [release.yml](.github/workflows/release.yml) | Tag `v*` | Checks, Tag = Version?, Deck bauen und prüfen, GitHub Release mit `.apkg`, Vorschau als Landing Page auf GitHub Pages |
+
+Ein Release entsteht so (der Tag muss zur Version in `pyproject.toml` passen):
+
+```bash
+uv version 1.2.0          # setzt die Version in pyproject.toml
+git commit -am "Version 1.2.0"
+git tag v1.2.0
+git push origin main v1.2.0
+```
+
+Die Bilder für PR-Kommentare liegen auf Hilfsbranches `pr-vorschau/pr-<Nummer>`, die beim Schließen des
+PR automatisch gelöscht werden. Lokal lässt sich der Diff mit `uv run tm-anki diff ALT NEU --out DIR`
+erzeugen, wobei ALT und NEU Build-Ordner sind.
 
 ## AI Notice
 

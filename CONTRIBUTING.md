@@ -62,8 +62,9 @@ und alle Abhängigkeiten installiert uv selbst.
    uv run tm-anki build --only "EF17" --preview  # -> build/preview.html
    ```
    In der Vorschau Vorder- und Rückseite ansehen. Sind die Beschriftungen lesbar und die Werte plausibel?
-4. Committen, pushen und einen Pull Request gegen `main` öffnen. Ein Screenshot der Vorschau im Pull
-   Request hilft beim Review. `build/` ist ignoriert.
+4. Committen, pushen und einen Pull Request gegen `main` öffnen. `build/` ist ignoriert. Im Pull Request
+   laufen automatisch die Tests. Ein Bot kommentiert den Karten-Diff mit neuen, entfernten und geänderten
+   Karten, bei Änderungen mit Vorher-nachher-Bildern.
 
 ### Worauf es bei einem System ankommt
 
@@ -94,8 +95,9 @@ Ist ein Wert falsch oder eine Karte schwer lesbar, öffne bitte ein Issue mit:
 ## Andere Änderungen
 
 Verbesserungen an Solver, Zeichnung oder Deck sind ebenfalls willkommen. Bei größeren Umbauten öffne bitte
-vorher ein Issue, damit wir die Idee kurz abstimmen können. Für jede Änderung gilt: `uv run pytest` muss
-grün sein.
+vorher ein Issue, damit wir die Idee kurz abstimmen können. Für jede Änderung gilt: Tests und Linter
+müssen grün sein (siehe README, Abschnitt [Entwicklung](README.md#entwicklung)). Am einfachsten richtest du
+einmal `uv run pre-commit install` ein, dann laufen die Prüfungen bei jedem Commit automatisch.
 
 ## Lizenz
 
