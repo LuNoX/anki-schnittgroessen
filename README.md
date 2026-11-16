@@ -78,6 +78,10 @@ variante("EF05", "VA04", faser="oben"),
 
 Danach `uv run tm-anki check` und `uv run pytest` ausführen, dann `uv run tm-anki build --preview`.
 
+**Neue Systeme sind gerne gesehen**
+Erstell einfach selbst ein neues und öffne einen Pull Request!
+Details dazu findest Du in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Bausteine
 
 | Baustein | Bedeutung |
