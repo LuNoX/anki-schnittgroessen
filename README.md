@@ -1,5 +1,8 @@
 # TM-Schnittgrößen als Anki-Karten
 
+> **Disclaimer:** Alle Angaben ohne Gewähr. Die Verläufe und Lösungen werden automatisch gegen eine unabhängige
+> FEM-Rechnung geprüft. Im Zweifel bitte eigenständig freischneiden und nachrechnen.
+
 Erzeugt ein Anki-Deck zum Üben von Schnittgrößenverläufen (Technische Mechanik / Statik).
 
 - **Vorderseite:** System mit Lagern, Lasten, Bemaßung, x1/x3-Dreibein und gestrichelter Faser, dazu
@@ -116,3 +119,12 @@ Eine neue Kategorie ist ein neues Modul in `katalog/` mit `KATEGORIE` und `SYSTE
 | `deck.py`, `cli.py` | Anki-Paket (genanki), Vorschau, Kommandozeile |
 | `checks.py` | Invarianten: Gleichgewicht, M = 0 an Gelenken, dM/dx = Q, dQ/dx = −q, Sprünge |
 | `tests/anastruct_bridge.py` | Übersetzung nach anaStruct für die unabhängige FEM-Gegenrechnung |
+
+## AI Notice
+
+Dieses Repository war ein kleines Wochenendprojekt. Der gesamte Code wurde von Claude (KI-Assistent von
+Anthropic, über Claude Code) geschrieben, nach meinen Vorgaben und Rückmeldungen.
+
+## Lizenz
+
+Lizenziert unter der [Apache License 2.0](LICENSE). © 2026 LuNoX
