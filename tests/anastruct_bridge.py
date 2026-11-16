@@ -7,6 +7,8 @@ Vorzeichenabbildung (an EF04/KA01/EF11/Winkelträger kalibriert, s. test_orakel_
 
 from __future__ import annotations
 
+import itertools
+
 import numpy as np
 import sympy as sp
 from anastruct import SystemElements
@@ -60,7 +62,7 @@ def build(st: Structure, result: Result):
     for m in st.members:
         bps = _breakpoints(st, m.idx)
         L = num(m.length)
-        for sa, sb in zip(bps[:-1], bps[1:]):
+        for sa, sb in itertools.pairwise(bps):
             spring = {}
             if sa < TOL and m.n0 in first_body and body_of[m.idx] != first_body[m.n0]:
                 spring[1] = 0
@@ -137,8 +139,11 @@ def compare(st: Structure, result: Result) -> list[str]:
         # M kehrt sich dadurch um, bei Q heben sich x1- und Faserumkehr auf.
         swapped = num(m.e1[0]) < -TOL
         m_sign = -1 if swapped else 1
-        for qty, key, factor in (("N1", "N", SIGN_N), ("Q3", "Q", SIGN_Q * m.fiber),
-                                 ("M2", "M", SIGN_M * m.fiber * m_sign)):
+        for qty, key, factor in (
+            ("N1", "N", SIGN_N),
+            ("Q3", "Q", SIGN_Q * m.fiber),
+            ("M2", "M", SIGN_M * m.fiber * m_sign),
+        ):
             f = sp.lambdify(S, seg.f(qty).subs(numeric_subs(seg.f(qty))))
             ours = np.array([float(f(t)) for t in ts])
             theirs = np.asarray(res[key], dtype=float) / factor

@@ -1,4 +1,4 @@
-from ..dsl import F, Fest, Kraft, Los, M0, Moment, Strecke, a, balken, l, q, q0, q1, q2
+from ..dsl import M0, F, Fest, Kraft, Los, Moment, Strecke, a, balken, l, q, q0, q1, q2
 
 KATEGORIE = "Einfeldträger"
 

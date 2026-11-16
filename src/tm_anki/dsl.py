@@ -10,6 +10,7 @@ Zeichenkoordinaten im Katalog: (x, y) mit y nach oben.
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,7 +30,7 @@ from .model import (
     Support,
     SystemDef,
 )
-from .symbols import F, M0, a, l, laenge, last, num, q, q0, q1, q2  # noqa: F401  (Re-Export)
+from .symbols import M0, F, a, l, laenge, last, num, q, q0, q1, q2  # noqa: F401  (Re-Export)
 
 TOL = 1e-9
 
@@ -152,7 +153,7 @@ class _Builder:
             chain = Chain(ci, list(names), fiber)
             s = sp.S.Zero
             chain.node_s[names[0]] = s
-            for n0, n1 in zip(names[:-1], names[1:]):
+            for n0, n1 in itertools.pairwise(names):
                 for n in (n0, n1):
                     if n not in nodes:
                         raise ModelError(f"Unbekannter Knoten {n!r}")
@@ -291,16 +292,26 @@ def _make_support(node: str, label: str, spec) -> Support:
         spec = spec()
     if isinstance(spec, Fest):
         return Support(
-            node, "fest", label, [(sp.S.One, sp.S.Zero), (sp.S.Zero, -sp.S.One)],
-            [f"{label}_H", f"{label}_V"], False, spec.boden,
+            node,
+            "fest",
+            label,
+            [(sp.S.One, sp.S.Zero), (sp.S.Zero, -sp.S.One)],
+            [f"{label}_H", f"{label}_V"],
+            False,
+            spec.boden,
         )
     if isinstance(spec, Los):
         (dx, dz), deg = _direction(spec.winkel)
         return Support(node, "los", label, [(dx, dz)], [label], False, spec.boden, deg)
     if isinstance(spec, Einspannung):
         return Support(
-            node, "einspannung", label, [(sp.S.One, sp.S.Zero), (sp.S.Zero, -sp.S.One)],
-            [f"{label}_H", f"{label}_V", f"M_{label}"], True, spec.boden,
+            node,
+            "einspannung",
+            label,
+            [(sp.S.One, sp.S.Zero), (sp.S.Zero, -sp.S.One)],
+            [f"{label}_H", f"{label}_V", f"M_{label}"],
+            True,
+            spec.boden,
         )
     raise ModelError(f"Unbekannter Lagertyp {spec!r}")
 
@@ -337,9 +348,21 @@ def balken(
     hinweis: str | None = None,
 ) -> SystemDef:
     """Gerader, horizontaler Balken der Länge ``L``; Positionen von links gemessen."""
-    args = dict(id=id, titel=titel, L=L, lager=lager, lasten=lasten, gelenke=gelenke, faser=faser,
-                x1=x1, groessen=groessen, gegeben=gegeben, kategorie=kategorie, darstellung=darstellung,
-                hinweis=hinweis)
+    args = {
+        "id": id,
+        "titel": titel,
+        "L": L,
+        "lager": lager,
+        "lasten": lasten,
+        "gelenke": gelenke,
+        "faser": faser,
+        "x1": x1,
+        "groessen": groessen,
+        "gegeben": gegeben,
+        "kategorie": kategorie,
+        "darstellung": darstellung,
+        "hinweis": hinweis,
+    }
     _check_darstellung(darstellung)
     L = sp.sympify(L)
     if faser not in ("unten", "oben") or x1 not in ("rechts", "links"):
@@ -387,11 +410,20 @@ def balken(
         else:
             raise ModelError(f"Unbekannte Last {spec!r}")
 
-    return _register(SystemDef(
-        id=id, titel=titel, kategorie=kategorie or "", structure=b.structure(supports, hinge_nodes, hinge_labels),
-        groessen=tuple(groessen) if groessen else None, gegeben=gegeben, darstellung=darstellung, hinweis=hinweis, builder=balken,
-        args=args,
-    ))
+    return _register(
+        SystemDef(
+            id=id,
+            titel=titel,
+            kategorie=kategorie or "",
+            structure=b.structure(supports, hinge_nodes, hinge_labels),
+            groessen=tuple(groessen) if groessen else None,
+            gegeben=gegeben,
+            darstellung=darstellung,
+            hinweis=hinweis,
+            builder=balken,
+            args=args,
+        )
+    )
 
 
 # --------------------------------------------------------------------------- rahmen
@@ -415,9 +447,20 @@ def rahmen(
 
     Lastpositionen: Knotenname oder ``(von, nach, abstand)`` entlang des Stabzugs.
     """
-    args = dict(id=id, titel=titel, knoten=knoten, staebe=staebe, lager=lager, lasten=lasten,
-                gelenke=gelenke, groessen=groessen, gegeben=gegeben, kategorie=kategorie,
-                darstellung=darstellung, hinweis=hinweis)
+    args = {
+        "id": id,
+        "titel": titel,
+        "knoten": knoten,
+        "staebe": staebe,
+        "lager": lager,
+        "lasten": lasten,
+        "gelenke": gelenke,
+        "groessen": groessen,
+        "gegeben": gegeben,
+        "kategorie": kategorie,
+        "darstellung": darstellung,
+        "hinweis": hinweis,
+    }
     _check_darstellung(darstellung)
     nodes = {n: Node(n, sp.sympify(x), -sp.sympify(y)) for n, (x, y) in knoten.items()}
     chains = []
@@ -461,9 +504,7 @@ def rahmen(
             b.add_moment(location(spec.pos), spec)
         elif isinstance(spec, Strecke):
             ends = [spec.von, spec.bis]
-            names = [p if isinstance(p, str) else p[0] for p in ends] + [
-                p[1] for p in ends if not isinstance(p, str)
-            ]
+            names = [p if isinstance(p, str) else p[0] for p in ends] + [p[1] for p in ends if not isinstance(p, str)]
             ci = chain_with(*dict.fromkeys(names))
             c = b.chains[ci]
 
@@ -478,14 +519,24 @@ def rahmen(
         else:
             raise ModelError(f"Unbekannte Last {spec!r}")
 
-    return _register(SystemDef(
-        id=id, titel=titel, kategorie=kategorie or "", structure=b.structure(supports, list(gelenke), hinge_labels),
-        groessen=tuple(groessen) if groessen else None, gegeben=gegeben, darstellung=darstellung, hinweis=hinweis, builder=rahmen,
-        args=args,
-    ))
+    return _register(
+        SystemDef(
+            id=id,
+            titel=titel,
+            kategorie=kategorie or "",
+            structure=b.structure(supports, list(gelenke), hinge_labels),
+            groessen=tuple(groessen) if groessen else None,
+            gegeben=gegeben,
+            darstellung=darstellung,
+            hinweis=hinweis,
+            builder=rahmen,
+            args=args,
+        )
+    )
 
 
 # --------------------------------------------------------------------------- variante
+
 
 def variante(basis: str | SystemDef, id: str, titel: str | None = None, **aenderungen) -> SystemDef:
     """Kopie eines Systems mit geänderten Parametern, z. B. ``faser="oben"``.

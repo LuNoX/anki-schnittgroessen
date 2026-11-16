@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 
 import numpy as np
@@ -36,7 +37,7 @@ def fiber_polyline(geo: Geo, chain, offset: float) -> list[Vec]:
     """Parallel versetzter Stabzug zur Faserseite (Gehrung an Knicken)."""
     ms = [geo.members[i] for i in chain.members]
     pts = [add(ms[0].p0, ms[0].e3, offset)]
-    for a_, b_ in zip(ms[:-1], ms[1:]):
+    for a_, b_ in itertools.pairwise(ms):
         if abs(dot(a_.e1, b_.e1) - 1) < 1e-9:
             pts.append(add(a_.p1, a_.e3, offset))
             continue
@@ -261,19 +262,19 @@ def draw_dimensions(cv_: Canvas):
         x_num = [num(x) for x in xs]
         cv_.line([x_num[0], x_num[-1]], [y, y], occupy=False, lw=0.7, color=cv.INK_MUTED)
         for x in x_num:
-            cv_.line([x - tick * 0.7, x + tick * 0.7], [y - tick, y + tick], occupy=False, lw=0.9,
-                     color=cv.INK_MUTED)
-        for xa, xb in zip(xs[:-1], xs[1:]):
-            cv_.text(((num(xa) + num(xb)) / 2, y - 0.15 * u), f"${latex_value(xb - xa)}$", fs=fs, va="top",
-                     occupy=False)
+            cv_.line([x - tick * 0.7, x + tick * 0.7], [y - tick, y + tick], occupy=False, lw=0.9, color=cv.INK_MUTED)
+        for xa, xb in itertools.pairwise(xs):
+            cv_.text(
+                ((num(xa) + num(xb)) / 2, y - 0.15 * u), f"${latex_value(xb - xa)}$", fs=fs, va="top", occupy=False
+            )
     if geo.H > TOL:
         ys = _unique_sorted([p[1] for p in pts])
         x = cv_.ext[0] - 1.0 * u
         y_num = [num(v) for v in ys]
         cv_.line([x, x], [y_num[0], y_num[-1]], occupy=False, lw=0.7, color=cv.INK_MUTED)
         for v in y_num:
-            cv_.line([x - tick, x + tick], [v - tick * 0.7, v + tick * 0.7], occupy=False, lw=0.9,
-                     color=cv.INK_MUTED)
-        for ya, yb in zip(ys[:-1], ys[1:]):
-            cv_.text((x - 0.15 * u, (num(ya) + num(yb)) / 2), f"${latex_value(yb - ya)}$", fs=fs, ha="right",
-                     occupy=False)
+            cv_.line([x - tick, x + tick], [v - tick * 0.7, v + tick * 0.7], occupy=False, lw=0.9, color=cv.INK_MUTED)
+        for ya, yb in itertools.pairwise(ys):
+            cv_.text(
+                (x - 0.15 * u, (num(ya) + num(yb)) / 2), f"${latex_value(yb - ya)}$", fs=fs, ha="right", occupy=False
+            )

@@ -47,7 +47,7 @@ def cmd_check(args) -> int:
         try:
             result = solve(s.structure)
             errors, warnings = check(s, result)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors, warnings = [f"{type(exc).__name__}: {exc}"], []
         qtys = ",".join(s.groessen or (result.nonzero_quantities() if not errors else ()))
         status = "FEHLER" if errors else "ok"
@@ -107,8 +107,11 @@ def main(argv: list[str] | None = None) -> int:
     p_build = sub.add_parser("build", help="Deck (.apkg) bauen")
     p_build.add_argument("--only", help="IDs/Muster, z. B. EF05,RA*")
     p_build.add_argument("--format", choices=["svg", "png"], default="svg")
-    p_build.add_argument("--darstellung", choices=["auto", "im_system", "separat"],
-                         help="Verlauf im System oder separat zeichnen (Standard: Katalog bzw. conventions.py)")
+    p_build.add_argument(
+        "--darstellung",
+        choices=["auto", "im_system", "separat"],
+        help="Verlauf im System oder separat zeichnen (Standard: Katalog bzw. conventions.py)",
+    )
     p_build.add_argument("--preview", action="store_true", help="zusätzlich build/preview.html schreiben")
     p_build.add_argument("--out", default="build")
     p_build.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))

@@ -38,8 +38,10 @@ def check(sysdef: SystemDef, result: Result) -> tuple[list[str], list[str]]:
     # sonst zeigt die Zeichnung einen Sonderfall (q_1 = q_2) statt des allgemeinen Falls.
     werte = [ZEICHENWERTE.get(s, 1) for s in load_syms]
     if len(set(werte)) < len(werte):
-        warnings.append(f"unabhängige Lastsymbole {sorted(map(str, load_syms))} mit gleichem Zeichenwert: "
-                        "Last über eines ausdrücken (z. B. F = q*a) oder last(..., zeichenwert=...) setzen")
+        warnings.append(
+            f"unabhängige Lastsymbole {sorted(map(str, load_syms))} mit gleichem Zeichenwert: "
+            "Last über eines ausdrücken (z. B. F = q*a) oder last(..., zeichenwert=...) setzen"
+        )
 
     # globales Gleichgewicht: Lasten + Reaktionen
     fx = fz = mo = sp.S.Zero

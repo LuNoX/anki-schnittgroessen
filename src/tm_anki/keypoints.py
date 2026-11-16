@@ -58,10 +58,9 @@ def extrema(f: sp.Expr, sa, sb) -> list[sp.Expr]:
     return roots
 
 
-def extremum_offset(result: Result, kp: "KeyPoint") -> sp.Expr:
+def extremum_offset(result: Result, kp: KeyPoint) -> sp.Expr:
     """Abstand eines Extremums vom Beginn seines Teilbereichs (für die Bemaßung)."""
-    seg = next(g for g in result.members[kp.member].segments
-               if num(g.sa) - TOL <= num(kp.s) <= num(g.sb) + TOL)
+    seg = next(g for g in result.members[kp.member].segments if num(g.sa) - TOL <= num(kp.s) <= num(g.sb) + TOL)
     return simplify_radicals(kp.s - seg.sa)
 
 
@@ -75,8 +74,9 @@ def keypoints(result: Result, qty: str) -> list[KeyPoint]:
 
         def kp(mi, s, v, kind, side, member2=None):
             m = st.members[mi]
-            out.append(KeyPoint(mi, sp.simplify(s), sp.simplify(v), kind, side, sp.simplify(m.s0 + s), chain.idx,
-                                member2))
+            out.append(
+                KeyPoint(mi, sp.simplify(s), sp.simplify(v), kind, side, sp.simplify(m.s0 + s), chain.idx, member2)
+            )
 
         def collinear(m1: int, m2: int) -> bool:
             e, f_ = st.members[m1].e1, st.members[m2].e1
@@ -95,17 +95,26 @@ def keypoints(result: Result, qty: str) -> list[KeyPoint]:
                 continue
             # zusammenhängender konstanter Bereich (auch über Gelenke/Knoten) -> ein Label in der Mitte
             j = i
-            while (j + 1 < len(segs) and _is_const(segs[j + 1][1].f(qty)) and _same(segs[j + 1][1].f(qty), f)
-                   and collinear(segs[j][0], segs[j + 1][0])):
+            while (
+                j + 1 < len(segs)
+                and _is_const(segs[j + 1][1].f(qty))
+                and _same(segs[j + 1][1].f(qty), f)
+                and collinear(segs[j][0], segs[j + 1][0])
+            ):
                 j += 1
             if _nonzero(f):
                 x_lo = st.members[mi].s0 + g.sa
                 x_hi = st.members[segs[j][0]].s0 + segs[j][1].sb
                 spots = []
-                for frac in (sp.Rational(1, 2), sp.Rational(3, 10), sp.Rational(7, 10), sp.Rational(1, 5),
-                             sp.Rational(4, 5)):
+                for frac in (
+                    sp.Rational(1, 2),
+                    sp.Rational(3, 10),
+                    sp.Rational(7, 10),
+                    sp.Rational(1, 5),
+                    sp.Rational(4, 5),
+                ):
                     x = x_lo + frac * (x_hi - x_lo)
-                    for mk, gk in segs[i:j + 1]:
+                    for mk, gk in segs[i : j + 1]:
                         s0 = st.members[mk].s0
                         if num(s0 + gk.sa) - TOL <= num(x) <= num(s0 + gk.sb) + TOL:
                             spots.append((mk, sp.simplify(x - s0)))
@@ -195,8 +204,13 @@ def curve_forms(result: Result, qty: str) -> list[CurveRange]:
                     continue
                 f_x = sp.expand(f.subs(S, x - m.s0))
                 first = st.members[cur.members[0]] if cur else None
-                if (cur and _same(cur.x1_hi, x_lo) and sp.expand(cur.expr_x1 - f_x) == 0
-                        and abs(num(first.e1[0]) - num(m.e1[0])) < TOL and abs(num(first.e1[1]) - num(m.e1[1])) < TOL):
+                if (
+                    cur
+                    and _same(cur.x1_hi, x_lo)
+                    and sp.expand(cur.expr_x1 - f_x) == 0
+                    and abs(num(first.e1[0]) - num(m.e1[0])) < TOL
+                    and abs(num(first.e1[1]) - num(m.e1[1])) < TOL
+                ):
                     if mi not in cur.members:
                         cur.members.append(mi)
                     cur.x1_hi = x_hi

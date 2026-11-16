@@ -39,8 +39,7 @@ def _wrap(expr: sp.Expr) -> str:
 
 def _radical_base(expr: sp.Expr) -> sp.Expr | None:
     """Einzige symbolische Wurzelbasis S (Potenzen S^(k/2)), sonst None."""
-    bases = {p.base for p in expr.atoms(sp.Pow)
-             if p.exp.is_Rational and p.exp.q == 2 and p.base.free_symbols}
+    bases = {p.base for p in expr.atoms(sp.Pow) if p.exp.is_Rational and p.exp.q == 2 and p.base.free_symbols}
     return bases.pop() if len(bases) == 1 else None
 
 
@@ -55,8 +54,9 @@ def radical_parts(expr) -> tuple[sp.Expr, sp.Expr, sp.Expr, sp.Expr] | None:
     if inner is None:
         return None
     W = sp.Dummy("W", positive=True)
-    e = expr.replace(lambda x: x.is_Pow and x.base == inner and x.exp.is_Rational and x.exp.q == 2,
-                     lambda x: W ** (2 * x.exp))
+    e = expr.replace(
+        lambda x: x.is_Pow and x.base == inner and x.exp.is_Rational and x.exp.q == 2, lambda x: W ** (2 * x.exp)
+    )
     n, d = sp.fraction(sp.together(e))
 
     def red(p):  # modulo W^2 = S
@@ -141,7 +141,7 @@ def latex_value(value) -> str:
     if v == 0:
         return "0"
     syms = sorted(v.free_symbols, key=_order_key)
-    c = sp.radsimp(sp.nsimplify(v.subs({s: 1 for s in syms})))
+    c = sp.radsimp(sp.nsimplify(v.subs(dict.fromkeys(syms, 1))))
     if c == 0:
         return _latex_general(v)
     unit = sp.simplify(v / c)
@@ -240,6 +240,7 @@ def _latex_general(v: sp.Expr) -> str:
 
 def _latex_sum(expr: sp.Expr) -> str:
     """Summe mit positiven Termen zuerst, jeder Term in Lehrbuch-Reihenfolge (2qa - F)."""
+
     def key(t):
         syms = sorted(t.free_symbols, key=_order_key)
         return (sy.num(t) < 0, _order_key(syms[0]) if syms else (-1, 0, ""))
@@ -265,10 +266,7 @@ def is_simple(value, max_ops: int = SIMPLE_OPS) -> bool:
     """Kurz genug für die Zeichnung? Unhandliche Extrema (z. B. allgemeine Trapezlast) werden nicht
     angegeben; dafür gibt es im Katalog ``hinweis=`` (z. B. "als Überlagerung betrachten")."""
     v = sp.sympify(value)
-    if _radical_base(v) is not None:
-        v = simplify_radicals(v)
-    else:
-        v = sp.factor(v)
+    v = simplify_radicals(v) if _radical_base(v) is not None else sp.factor(v)
     return sp.count_ops(v) <= max_ops
 
 

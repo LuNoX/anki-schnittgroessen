@@ -54,13 +54,19 @@ _HEAD = """<div class="tm-card">
 {{#Gegeben}}<div class="tm-given">Gegeben: {{Gegeben}}</div>{{/Gegeben}}
 """
 
-FRONT = _HEAD % " = ?" + """<div class="tm-img">{{Vorderseite}}</div>
+FRONT = (
+    _HEAD % " = ?"
+    + """<div class="tm-img">{{Vorderseite}}</div>
 </div>"""
+)
 
-BACK = _HEAD % "" + """<div class="tm-img">{{Rueckseite}}</div>
+BACK = (
+    _HEAD % ""
+    + """<div class="tm-img">{{Rueckseite}}</div>
 <div class="tm-info">{{Info}}</div>
 <div class="tm-id">{{ID}} · {{Kategorie}}</div>
 </div>"""
+)
 
 FIELDS = ["ID", "Titel", "Kategorie", "Groesse", "Gegeben", "Vorderseite", "Rueckseite", "Info"]
 
@@ -135,8 +141,10 @@ def info_html(result: Result, hinweis: str | None = None) -> str:
         items.append(f"\\({name} = {mag}\\) {arrow}")
     parts = [_row("Auflagerreaktionen", items)]
     if hinweis:
-        parts.append(f'<div class="tm-sec" style="text-align:center">Hinweis</div>'
-                     f'<div class="tm-hint" style="text-align:center;margin:.15em 0 .5em 0">{hinweis}</div>')
+        parts.append(
+            f'<div class="tm-sec" style="text-align:center">Hinweis</div>'
+            f'<div class="tm-hint" style="text-align:center;margin:.15em 0 .5em 0">{hinweis}</div>'
+        )
     return "".join(parts)
 
 
@@ -148,8 +156,10 @@ _ROW_STYLE = "display:flex;flex-wrap:wrap;justify-content:center;align-items:bas
 def _row(title: str, items: list[str]) -> str:
     """Überschrift + Einträge nebeneinander, beides zentriert (bricht bei Platzmangel zwischen Einträgen um)."""
     spans = "".join(f'<span style="white-space:nowrap">{i}</span>' for i in items)
-    return (f'<div class="tm-sec" style="text-align:center">{title}</div>'
-            f'<div class="tm-row" style="{_ROW_STYLE}">{spans}</div>')
+    return (
+        f'<div class="tm-sec" style="text-align:center">{title}</div>'
+        f'<div class="tm-row" style="{_ROW_STYLE}">{spans}</div>'
+    )
 
 
 def _media_name(sid: str, qty: str, side: str, data: bytes, fmt: str) -> str:
@@ -165,18 +175,20 @@ def make_cards(sysdef: SystemDef, fmt: str = "svg", darstellung: str | None = No
     for qty in qtys:
         kps = keypoints(result, qty)
         front, back = render_card(sysdef, result, qty, kps, fmt=fmt, darstellung=darstellung)
-        cards.append(Card(
-            sysdef_id=sysdef.id,
-            titel=sysdef.titel,
-            kategorie=sysdef.kategorie,
-            qty=qty,
-            gegeben=f"\\({sysdef.gegeben}\\)" if sysdef.gegeben else "",
-            info=info_html(result, sysdef.hinweis),
-            front_name=_media_name(sysdef.id, qty, "front", front, fmt),
-            back_name=_media_name(sysdef.id, qty, "back", back, fmt),
-            front=front,
-            back=back,
-        ))
+        cards.append(
+            Card(
+                sysdef_id=sysdef.id,
+                titel=sysdef.titel,
+                kategorie=sysdef.kategorie,
+                qty=qty,
+                gegeben=f"\\({sysdef.gegeben}\\)" if sysdef.gegeben else "",
+                info=info_html(result, sysdef.hinweis),
+                front_name=_media_name(sysdef.id, qty, "front", front, fmt),
+                back_name=_media_name(sysdef.id, qty, "back", back, fmt),
+                front=front,
+                back=back,
+            )
+        )
     return cards
 
 
@@ -202,12 +214,22 @@ def write_package(cards: list[Card], out_dir: Path) -> Path:
             path.write_bytes(data)
             media.append(str(path))
         tag_kat = c.kategorie.replace(" ", "_")
-        deck.add_note(TMNote(
-            model=MODEL,
-            fields=[c.note_id, _titel_html(c.titel), html.escape(c.kategorie), f"\\({cv.LATEX[c.qty]}\\)",
-                    c.gegeben, f'<img src="{c.front_name}">', f'<img src="{c.back_name}">', c.info],
-            tags=[f"{TAG_PREFIX}::{tag_kat}", f"{TAG_PREFIX}::{c.qty}"],
-        ))
+        deck.add_note(
+            TMNote(
+                model=MODEL,
+                fields=[
+                    c.note_id,
+                    _titel_html(c.titel),
+                    html.escape(c.kategorie),
+                    f"\\({cv.LATEX[c.qty]}\\)",
+                    c.gegeben,
+                    f'<img src="{c.front_name}">',
+                    f'<img src="{c.back_name}">',
+                    c.info,
+                ],
+                tags=[f"{TAG_PREFIX}::{tag_kat}", f"{TAG_PREFIX}::{c.qty}"],
+            )
+        )
     pkg = genanki.Package(deck)
     pkg.media_files = media
     target = out_dir / "TM_Schnittgroessen.apkg"

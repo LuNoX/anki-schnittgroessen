@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import itertools
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 
@@ -252,7 +253,7 @@ def solve(st: Structure) -> Result:
 
     A, rhs = sp.linear_eq_to_matrix([sp.expand(e) for e in eqs], unknowns)
     n_eq, n_unk = A.shape
-    A_num = A.subs({s: 1 for s in A.free_symbols})
+    A_num = A.subs(dict.fromkeys(A.free_symbols, 1))
     rank = A_num.rank()
     if n_unk != n_eq or rank < n_unk:
         reactions = sum(len(s.directions) + int(s.moment) for s in st.supports)
@@ -334,7 +335,7 @@ def _member_segments(m: Member, base: list[Force], loads: _Loads, subs) -> Membe
             uniq.append(sp.simplify(b))
 
     segments = []
-    for sa, sb in zip(uniq[:-1], uniq[1:]):
+    for sa, sb in itertools.pairwise(uniq):
         lo = num(sa)
         forces = list(base)
         forces += [f for s, f in pts if num(s) <= lo + TOL]

@@ -6,8 +6,9 @@ Positive Momente um Y drehen also (im Bild) gegen den Uhrzeigersinn.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 import sympy as sp
 
@@ -149,5 +150,5 @@ class SystemDef:
     gegeben: str | None = None  # LaTeX, z. B. r"F < 2qa"
     hinweis: str | None = None  # Lösungshinweis auf der Rückseite (HTML/MathJax), z. B. "als Überlagerung ..."
     darstellung: str | None = None  # "auto" | "im_system" | "separat"; None = conventions.DARSTELLUNG
-    builder: Callable[..., "SystemDef"] | None = None
+    builder: Callable[..., SystemDef] | None = None
     args: dict[str, Any] = field(default_factory=dict)

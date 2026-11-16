@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 
 import numpy as np
@@ -31,8 +32,9 @@ def diagram_scale(cv_: Canvas, result: Result, qty: str) -> float:
     for mr in result.members:
         for seg in mr.segments:
             f = _lam(seg.f(qty))
-            ss = np.linspace(float(sp.N(seg.sa.subs(numeric_subs(seg.sa)))),
-                             float(sp.N(seg.sb.subs(numeric_subs(seg.sb)))), SAMPLES)
+            ss = np.linspace(
+                float(sp.N(seg.sa.subs(numeric_subs(seg.sa)))), float(sp.N(seg.sb.subs(numeric_subs(seg.sb)))), SAMPLES
+            )
             vmax = max(vmax, float(np.max(np.abs(f(ss)))))
     if vmax < 1e-12:
         return 0.0
@@ -50,9 +52,16 @@ def _num(x) -> float:
     return float(x.subs(numeric_subs(x)))
 
 
-def draw_diagram(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], visible: bool = True,
-                 overlay: bool = False, avoid_boxes: list | None = None,
-                 movable_labels: list | None = None) -> dict:
+def draw_diagram(
+    cv_: Canvas,
+    result: Result,
+    qty: str,
+    kps: list[KeyPoint],
+    visible: bool = True,
+    overlay: bool = False,
+    avoid_boxes: list | None = None,
+    movable_labels: list | None = None,
+) -> dict:
     """Verlauf zeichnen. ``overlay=True``: direkt in die Systemzeichnung.
 
     ``avoid_boxes``: Symbole und Bezeichnungen von Lagern und Lasten; die Werte des Verlaufs weichen
@@ -66,7 +75,7 @@ def draw_diagram(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], vis
     color = cv.COLORS[qty]
     side = cv.plot_sign(qty)
     k = diagram_scale(cv_, result, qty)
-    vis = dict(visible=visible)
+    vis = {"visible": visible}
     system_boxes = (list(avoid_boxes) if avoid_boxes is not None else list(cv_.boxes)) if overlay else []
     strict: list = []  # Boxen der Bezeichnungen (nach dem Verschieben)
     metric = {"cover": 0.0, "label_hits": 0}
@@ -86,13 +95,12 @@ def draw_diagram(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], vis
             obstacles += [g.point(s) for s in np.linspace(0, g.L, n)]
         for chain in geo.st.chains:
             pts = fiber_polyline(geo, chain, 0.36 * u)
-            for p, q_ in zip(pts[:-1], pts[1:]):
+            for p, q_ in itertools.pairwise(pts):
                 n = max(2, int(math.dist(p, q_) / (0.15 * u)))
                 obstacles += [add(p, (q_[0] - p[0], q_[1] - p[1]), t) for t in np.linspace(0, 1, n)]
         placed_markers: list = []  # über alle Stabzüge, damit sich Marker nicht überdecken
         for chain in geo.st.chains:
-            obstacles += _draw_chain(cv_, result, qty, chain, k, side, color, vis, placed_markers, polys,
-                                     poly_owner)
+            obstacles += _draw_chain(cv_, result, qty, chain, k, side, color, vis, placed_markers, polys, poly_owner)
         fill = _fill_samples(geo, result, qty, k, side)
         if overlay and movable_labels:
             strict = _move_labels_out(cv_, movable_labels, polys, system_boxes)
@@ -100,13 +108,22 @@ def draw_diagram(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], vis
                 metric["cover"] = _max_box_cover(strict, polys, min_area=0.0)
         if overlay:  # Dreibein und Bemaßungskette sollen danach um den Verlauf herum platziert werden
             cv_.obstacle_pts = np.vstack([fill, np.array(obstacles).reshape(-1, 2)])
-        metric["label_hits"] = _place_value_labels(cv_, result, qty, kps, k, side, vis, np.array(obstacles),
-                                                   system_boxes, strict if overlay else None,
-                                                   list(zip(polys, poly_owner)))
+        metric["label_hits"] = _place_value_labels(
+            cv_,
+            result,
+            qty,
+            kps,
+            k,
+            side,
+            vis,
+            np.array(obstacles),
+            system_boxes,
+            strict if overlay else None,
+            list(zip(polys, poly_owner)),
+        )
 
     if geo.H >= 1e-9 and not overlay:  # Rahmen: Name oben links über dem Verlauf
-        cv_.text((cv_.ext[0], cv_.ext[3] + 0.3 * u), name, fs=cv.FONT_SIZE + 3, ha="left", va="bottom",
-                 occupy=False)
+        cv_.text((cv_.ext[0], cv_.ext[3] + 0.3 * u), name, fs=cv.FONT_SIZE + 3, ha="left", va="bottom", occupy=False)
     return metric
 
 
@@ -144,8 +161,14 @@ def _move_labels_out(cv_: Canvas, labels: list, polys: list[np.ndarray], system_
 
     def on_member(box) -> bool:
         m = 0.1 * u
-        return bool(np.any((member_pts[:, 0] > box[0] - m) & (member_pts[:, 0] < box[2] + m)
-                           & (member_pts[:, 1] > box[1] - m) & (member_pts[:, 1] < box[3] + m)))
+        return bool(
+            np.any(
+                (member_pts[:, 0] > box[0] - m)
+                & (member_pts[:, 0] < box[2] + m)
+                & (member_pts[:, 1] > box[1] - m)
+                & (member_pts[:, 1] < box[3] + m)
+            )
+        )
 
     out_boxes: list = []
     for art, box in labels:
@@ -153,8 +176,10 @@ def _move_labels_out(cv_: Canvas, labels: list, polys: list[np.ndarray], system_
             out_boxes.append(box)
             continue
         c = ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
-        nearest = min((g.point(min(max(dot((c[0] - g.p0[0], c[1] - g.p0[1]), g.e1), 0.0), g.L))
-                       for g in geo.members), key=lambda p: math.dist(p, c))
+        nearest = min(
+            (g.point(min(max(dot((c[0] - g.p0[0], c[1] - g.p0[1]), g.e1), 0.0), g.L)) for g in geo.members),
+            key=lambda p: math.dist(p, c),
+        )
         d = norm((c[0] - nearest[0], c[1] - nearest[1]))
         if d == (0.0, 0.0):
             d = (0.0, 1.0)
@@ -213,8 +238,19 @@ def _box_hits(box, boxes: list) -> int:
     return sum(1 for b in boxes if box[0] < b[2] and box[2] > b[0] and box[1] < b[3] and box[3] > b[1])
 
 
-def _draw_chain(cv_: Canvas, result: Result, qty: str, chain, k, side, color, vis, placed_markers: list,
-                polys: list | None = None, poly_owner: list | None = None):
+def _draw_chain(
+    cv_: Canvas,
+    result: Result,
+    qty: str,
+    chain,
+    k,
+    side,
+    color,
+    vis,
+    placed_markers: list,
+    polys: list | None = None,
+    poly_owner: list | None = None,
+):
     """``polys``/``poly_owner``: Verlaufsflächen und ihr Abschnitt (Stab, sa, sb) werden ergänzt."""
     geo, u = cv_.geo, cv_.u
     eps = 1e-9
@@ -290,7 +326,7 @@ def _sign_markers(cv_: Canvas, samples: list[tuple], k, side, color, vis, placed
     centers = []
     pts = [g.point(s) for g, s, _ in samples]
     vs = np.array([v for _, _, v in samples])
-    xs = np.concatenate([[0.0], np.cumsum([math.dist(p, q) for p, q in zip(pts[:-1], pts[1:])])])
+    xs = np.concatenate([[0.0], np.cumsum([math.dist(p, q) for p, q in itertools.pairwise(pts)])])
     sign = np.sign(np.where(np.abs(vs) * k < 1e-9, 0, vs))
     i = 0
     while i < len(vs):
@@ -316,8 +352,18 @@ def _sign_markers(cv_: Canvas, samples: list[tuple], k, side, color, vis, placed
             txt = "+" if sign[i] > 0 else "−"
 
             def draw(p):
-                cv_.ax.text(p[0], p[1], txt, fontsize=8, ha="center", va="center", color=cv.INK, zorder=5,
-                            bbox=dict(boxstyle="circle,pad=0.12", fc="white", ec=color, lw=0.9), **vis)
+                cv_.ax.text(
+                    p[0],
+                    p[1],
+                    txt,
+                    fontsize=8,
+                    ha="center",
+                    va="center",
+                    color=cv.INK,
+                    zorder=5,
+                    bbox={"boxstyle": "circle,pad=0.12", "fc": "white", "ec": color, "lw": 0.9},
+                    **vis,
+                )
                 centers.append(p)
                 placed.append(p)
 
@@ -328,8 +374,9 @@ def _sign_markers(cv_: Canvas, samples: list[tuple], k, side, color, vis, placed
             # und nicht auf einem schon gesetzten Marker (z. B. an T-Anschlüssen)
             x_mid = 0.5 * (xs[i] + xs[j])
             inner = [t for t in range(i, j + 1) if xs[i] + 0.2 * length <= xs[t] <= xs[j] - 0.2 * length]
-            ranked = sorted(inner or range(i, j + 1),
-                            key=lambda t: -abs(vs[t]) * (1 - 0.6 * abs(xs[t] - x_mid) / length))
+            ranked = sorted(
+                inner or range(i, j + 1), key=lambda t: -abs(vs[t]) * (1 - 0.6 * abs(xs[t] - x_mid) / length)
+            )
             done = False
             for t in ranked:
                 g, s, v = samples[t]
@@ -351,9 +398,19 @@ def _sign_markers(cv_: Canvas, samples: list[tuple], k, side, color, vis, placed
     return centers
 
 
-def _place_value_labels(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], k, side, vis,
-                        obstacles: np.ndarray, avoid: list | None = None, strict: list | None = None,
-                        areas: list | None = None) -> int:
+def _place_value_labels(
+    cv_: Canvas,
+    result: Result,
+    qty: str,
+    kps: list[KeyPoint],
+    k,
+    side,
+    vis,
+    obstacles: np.ndarray,
+    avoid: list | None = None,
+    strict: list | None = None,
+    areas: list | None = None,
+) -> int:
     """Werte, Kurvenform und Extremum-Bemaßungen platzieren. ``avoid``: Boxen der Systemzeichnung
     (Lasten, Lager), wenn der Verlauf im System liegt; ``areas``: [(Fläche, (Stab, sa, sb))] der Verläufe.
     Rückgabe: Anzahl verbleibender Kollisionen mit Bezeichnungen."""
@@ -387,12 +444,16 @@ def _place_value_labels(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoin
         x0, y0, x1, y1 = box[0] - text_pad, box[1] - text_pad, box[2] + text_pad, box[3] + text_pad
         inside = 0
         if len(obstacles):
-            inside = int(np.count_nonzero((obstacles[:, 0] > x0) & (obstacles[:, 0] < x1)
-                                          & (obstacles[:, 1] > y0) & (obstacles[:, 1] < y1)))
+            inside = int(
+                np.count_nonzero(
+                    (obstacles[:, 0] > x0) & (obstacles[:, 0] < x1) & (obstacles[:, 1] > y0) & (obstacles[:, 1] < y1)
+                )
+            )
         on_dim = 0
         if len(dims):  # Maß- und Hilfslinien der Extremum-Bemaßung: nie durch einen Wert hindurch
-            on_dim = int(np.count_nonzero((dims[:, 0] > x0) & (dims[:, 0] < x1)
-                                          & (dims[:, 1] > y0) & (dims[:, 1] < y1)))
+            on_dim = int(
+                np.count_nonzero((dims[:, 0] > x0) & (dims[:, 0] < x1) & (dims[:, 1] > y0) & (dims[:, 1] < y1))
+            )
         sc = inside + 8 * on_dim + 50 * _box_hits(box, placed) + 30 * _box_hits(box, labels_gap)
         sc += 4 * _box_hits(box, symbols)
         if own is not None and area_paths:
@@ -423,8 +484,9 @@ def _place_value_labels(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoin
             own_dir = {"left": -1, "right": 1}.get(kp.side, 0)
             if own_dir == 0 and kp.kind == "rand":
                 own_dir = 1 if s_c < 1e-9 else (-1 if s_c > g_m.L - 1e-9 else 0)
-            cands = [(add(base[0], e1, sh * u), *base[1:], sh) for sh in (0.0, 0.55, -0.55, 1.1, -1.1, 1.8, -1.8,
-                                                                          2.6, -2.6)]
+            cands = [
+                (add(base[0], e1, sh * u), *base[1:], sh) for sh in (0.0, 0.55, -0.55, 1.1, -1.1, 1.8, -1.8, 2.6, -2.6)
+            ]
             if kp.kind == "ecke" and kp.member2 is not None:
                 # in die freie Ecke zwischen den beiden Ordinaten (Bezugspunkt der Ecke: ref)
                 P, ref = g_m.point(s_c), base[4]
@@ -453,8 +515,16 @@ def _place_value_labels(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoin
                 break
         if kp.kind == "extrem":
             p = g.point(s)
-            cv_.line([p[0], c[0]], [p[1], c[1]], occupy=False, color=cv.INK_MUTED, lw=0.7,
-                     linestyle=(0, (1.5, 1.5)), zorder=2, **vis)
+            cv_.line(
+                [p[0], c[0]],
+                [p[1], c[1]],
+                occupy=False,
+                color=cv.INK_MUTED,
+                lw=0.7,
+                linestyle=(0, (1.5, 1.5)),
+                zorder=2,
+                **vis,
+            )
             cv_.circle(c, 0.07 * u, occupy=False, fc=cv.INK, ec="none", zorder=4, **vis)
         # deutlich vom Kurvenpunkt abgerückt: feine Führungslinie zeigt, wohin der Wert gehört
         near = (min(max(c[0], box[0]), box[2]), min(max(c[1], box[1]), box[3]))
@@ -465,8 +535,7 @@ def _place_value_labels(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoin
             in_notch = bool(_box_hits(box, [notch]))
         if math.dist(near, c) > 0.6 * u and not in_notch:
             tip = add(c, norm((near[0] - c[0], near[1] - c[1])), 0.08 * u)
-            cv_.line([tip[0], near[0]], [tip[1], near[1]], occupy=False, color=cv.INK_MUTED, lw=0.6, zorder=5,
-                     **vis)
+            cv_.line([tip[0], near[0]], [tip[1], near[1]], occupy=False, color=cv.INK_MUTED, lw=0.6, zorder=5, **vis)
         placed.append(box)
         cv_.text(anchor, text, fs=fs, ha=ha, va=va, occupy=False, zorder=6, **vis)
 
@@ -502,16 +571,27 @@ def _place_value_labels(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoin
                 continue
             _, anchor, ha, va, box = best
             placed.append(box)
-            cv_.text(anchor, text, fs=fs_c, ha=ha, va=va, occupy=False, zorder=6, color=cv.INK_MUTED,
-                     fontstyle="italic", **vis)
+            cv_.text(
+                anchor,
+                text,
+                fs=fs_c,
+                ha=ha,
+                va=va,
+                occupy=False,
+                zorder=6,
+                color=cv.INK_MUTED,
+                fontstyle="italic",
+                **vis,
+            )
     cv_.boxes.extend(placed)  # Werte, Kurvenlabels, Bemaßungszahlen: Dreibein und Maßkette weichen aus
     if len(dims):
         cv_.obstacle_pts = np.vstack([cv_.obstacle_pts.reshape(-1, 2), dims])
     return sum(1 for b in placed if _box_hits(b, strict if strict is not None else avoid))
 
 
-def _draw_extremum_dimensions(cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], k: float, side: int,
-                              vis, placed: list, avoid: list):
+def _draw_extremum_dimensions(
+    cv_: Canvas, result: Result, qty: str, kps: list[KeyPoint], k: float, side: int, vis, placed: list, avoid: list
+):
     """Bemaßung vom Beginn des Teilbereichs bis zum Extremum, bevorzugt auf der dem Verlauf abgewandten
     Seite; liegen dort Lasten oder Lager (Verlauf im System), weiter außen oder jenseits der Kurve.
     Gibt Punkte entlang der Bemaßung zurück (Hindernisse für weitere Beschriftungen)."""
@@ -521,8 +601,9 @@ def _draw_extremum_dimensions(cv_: Canvas, result: Result, qty: str, kps: list[K
     for kp in kps:
         if kp.kind != "extrem" or not is_simple(kp.value):
             continue
-        seg = next(g for g in result.members[kp.member].segments
-                   if _num(g.sa) - 1e-9 <= _num(kp.s) <= _num(g.sb) + 1e-9)
+        seg = next(
+            g for g in result.members[kp.member].segments if _num(g.sa) - 1e-9 <= _num(kp.s) <= _num(g.sb) + 1e-9
+        )
         dist = extremum_offset(result, kp)
         if not is_simple(dist, DIM_OPS):  # Lage zu unhandlich für eine Bemaßung
             continue
@@ -560,10 +641,18 @@ def _draw_extremum_dimensions(cv_: Canvas, result: Result, qty: str, kps: list[K
                     break
                 anchor = add(anchor, n, 0.1 * u)
                 box = cv_.text_box(anchor, text, fs, ha, va)
-            helpers = np.array([add(a, (p[0] - a[0], p[1] - a[1]), t)  # Hilfslinien zur Maßlinie
-                                for a, p in zip(starts, (p0, p1)) for t in np.linspace(0, 1, 16)])
-            hits = (int(np.count_nonzero(_inside_any(np.vstack([line, helpers]), avoid_pad)))
-                    + 10 * _box_hits(box, avoid_pad) + 10 * _box_hits(box, placed))
+            helpers = np.array(
+                [
+                    add(a, (p[0] - a[0], p[1] - a[1]), t)  # Hilfslinien zur Maßlinie
+                    for a, p in zip(starts, (p0, p1))
+                    for t in np.linspace(0, 1, 16)
+                ]
+            )
+            hits = (
+                int(np.count_nonzero(_inside_any(np.vstack([line, helpers]), avoid_pad)))
+                + 10 * _box_hits(box, avoid_pad)
+                + 10 * _box_hits(box, placed)
+            )
             sc = 10 * hits + off / u  # Kollisionen vermeiden, sonst möglichst nah am Stab
             if best is None or sc < best[0]:
                 best = (sc, n, p0, p1, anchor, ha, va, box, np.vstack([line, helpers]), starts)

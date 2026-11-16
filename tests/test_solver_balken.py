@@ -3,7 +3,7 @@ import sympy as sp
 
 from tm_anki.dsl import Einspannung, Fest, Kraft, Los, Moment, Strecke, balken
 from tm_anki.solver import StaticsError, solve
-from tm_anki.symbols import F, M0, S, a, l, q, q0
+from tm_anki.symbols import M0, F, S, a, l, q, q0
 
 
 def _eq(x, y):
@@ -73,15 +73,15 @@ def test_ef11_moment_mittig():
 
 
 def test_ef13_schraege_kraft_normalkraft():
-    res = solve(balken("T13", "", L=l, lager={0: Fest(), l: Los()},
-                       lasten=[Kraft(l / 2, F, richtung=-45)]).structure)
+    res = solve(balken("T13", "", L=l, lager={0: Fest(), l: Los()}, lasten=[Kraft(l / 2, F, richtung=-45)]).structure)
     assert _eq(val(res, "N1", l / 4), sp.sqrt(2) * F / 2)  # Zug links der Kraft
     assert _eq(val(res, "N1", 3 * l / 4), 0)
 
 
 def test_ef15_festlager_rechts():
-    res = solve(balken("T15", "", L=2 * a, lager={0: Los(), 2 * a: Fest()},
-                       lasten=[Kraft(a, F, richtung="rechts")]).structure)
+    res = solve(
+        balken("T15", "", L=2 * a, lager={0: Los(), 2 * a: Fest()}, lasten=[Kraft(a, F, richtung="rechts")]).structure
+    )
     assert _eq(val(res, "N1", a / 2), 0)
     assert _eq(val(res, "N1", 3 * a / 2), -F)  # Druck vor dem Festlager
 
@@ -100,15 +100,13 @@ def test_ka10_einspannung_rechts():
 
 
 def test_faser_oben_kehrt_moment_um():
-    res = solve(balken("T40", "", L=l, lager={0: Fest(), l: Los()}, lasten=[Strecke(0, l, q)],
-                       faser="oben").structure)
+    res = solve(balken("T40", "", L=l, lager={0: Fest(), l: Los()}, lasten=[Strecke(0, l, q)], faser="oben").structure)
     assert _eq(val(res, "M2", l / 2), -q * l**2 / 8)
     assert _eq(val(res, "Q3", 0), -q * l / 2)
 
 
 def test_x1_nach_links():
-    res = solve(balken("T41", "", L=3 * a, lager={0: Fest(), 3 * a: Los()}, lasten=[Kraft(a, F)],
-                       x1="links").structure)
+    res = solve(balken("T41", "", L=3 * a, lager={0: Fest(), 3 * a: Los()}, lasten=[Kraft(a, F)], x1="links").structure)
     # x1 startet rechts (Lager B, B = F/3): Querkraft kehrt sich gegenüber x1 nach rechts um,
     # das Moment (Faser unten) bleibt positiv
     assert _eq(val(res, "Q3", a / 2), F / 3)
@@ -117,8 +115,11 @@ def test_x1_nach_links():
 
 
 def test_gerber_gelenk_momentenfrei():
-    res = solve(balken("T50", "", L=3 * a, lager={0: Einspannung(), 3 * a: Los()}, gelenke=[a],
-                       lasten=[Strecke(0, 3 * a, q)]).structure)
+    res = solve(
+        balken(
+            "T50", "", L=3 * a, lager={0: Einspannung(), 3 * a: Los()}, gelenke=[a], lasten=[Strecke(0, 3 * a, q)]
+        ).structure
+    )
     assert _eq(val(res, "M2", a, member=0, side="left"), 0)
     assert _eq(val(res, "M2", 0, member=1), 0)
     assert _eq(reaction(res, "B"), q * a)

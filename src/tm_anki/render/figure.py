@@ -15,25 +15,27 @@ import math
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
-from .. import conventions as cv  # noqa: E402
-from ..keypoints import KeyPoint  # noqa: E402
-from ..model import SystemDef  # noqa: E402
-from ..solver import Result  # noqa: E402
-from .base import Canvas, Geo  # noqa: E402
-from .diagram import draw_diagram, draw_skeleton  # noqa: E402
-from .loads import draw_line_loads, draw_loads, draw_moments, draw_point_forces  # noqa: E402
-from .structure import draw_dimensions, draw_fiber, draw_hinges, draw_members, draw_supports, draw_triads  # noqa: E402
+from .. import conventions as cv
+from ..keypoints import KeyPoint
+from ..model import SystemDef
+from ..solver import Result
+from .base import Canvas, Geo
+from .diagram import draw_diagram, draw_skeleton
+from .loads import draw_line_loads, draw_loads, draw_moments, draw_point_forces
+from .structure import draw_dimensions, draw_fiber, draw_hinges, draw_members, draw_supports, draw_triads
 
-matplotlib.rcParams.update({
-    "mathtext.fontset": cv.MATH_FONTSET,
-    "font.family": "serif",
-    "font.serif": ["DejaVu Serif"],
-    "font.size": cv.FONT_SIZE,
-    "svg.hashsalt": "tm-anki",
-    "svg.fonttype": "path",
-})
+matplotlib.rcParams.update(
+    {
+        "mathtext.fontset": cv.MATH_FONTSET,
+        "font.family": "serif",
+        "font.serif": ["DejaVu Serif"],
+        "font.size": cv.FONT_SIZE,
+        "svg.hashsalt": "tm-anki",
+        "svg.fonttype": "path",
+    }
+)
 
 TARGET_ASPECT = 1.7
 
@@ -88,8 +90,9 @@ def _build_overlay(geo: Geo, result: Result, qty: str, kps: list[KeyPoint], show
     draw_point_forces(c)
     draw_moments(c)
     draw_line_loads(c, color=secondary)
-    metric = draw_diagram(c, result, qty, kps, visible=show, overlay=True, avoid_boxes=c.boxes[n0:],
-                          movable_labels=c.texts[t0:])
+    metric = draw_diagram(
+        c, result, qty, kps, visible=show, overlay=True, avoid_boxes=c.boxes[n0:], movable_labels=c.texts[t0:]
+    )
     draw_triads(c, color=secondary)
     draw_dimensions(c)
     pad = 0.5 * u
@@ -99,9 +102,10 @@ def _build_overlay(geo: Geo, result: Result, qty: str, kps: list[KeyPoint], show
     return fig, x1 - x0, y1 - y0, metric
 
 
-def choose_darstellung(sysdef: SystemDef, result: Result, qty: str, kps: list[KeyPoint],
-                       darstellung: str | None = None) -> str:
-    """"im_system" oder "separat". Bei "auto" wird im System gezeichnet, solange der Verlauf
+def choose_darstellung(
+    sysdef: SystemDef, result: Result, qty: str, kps: list[KeyPoint], darstellung: str | None = None
+) -> str:
+    """ "im_system" oder "separat". Bei "auto" wird im System gezeichnet, solange der Verlauf
     Lasten, Lager und deren Beschriftung kaum überdeckt und alle Beschriftungen Platz finden."""
     mode = darstellung or sysdef.darstellung or cv.DARSTELLUNG
     if mode != "auto":
@@ -170,8 +174,9 @@ def _save(fig, fmt: str) -> bytes:
     return buf.getvalue()
 
 
-def render_card(sysdef: SystemDef, result: Result, qty: str, kps: list[KeyPoint], fmt: str = "svg",
-                darstellung: str | None = None):
+def render_card(
+    sysdef: SystemDef, result: Result, qty: str, kps: list[KeyPoint], fmt: str = "svg", darstellung: str | None = None
+):
     """(Vorderseite, Rückseite) als Bytes. ``darstellung`` überschreibt System- und Standardeinstellung."""
     mode = choose_darstellung(sysdef, result, qty, kps, darstellung)
     front = _save(_figure(sysdef, result, qty, kps, show=False, mode=mode), fmt)

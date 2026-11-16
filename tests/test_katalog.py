@@ -43,8 +43,11 @@ def test_kennwerte_einfeld_streckenlast_links():
 def test_kennwerte_konstanter_bereich_ueber_gelenk_nur_einmal():
     from tm_anki.dsl import Einspannung
 
-    res = solve(balken("K2", "", L=3 * a, lager={0: Einspannung(), 3 * a: Los()}, gelenke=[a],
-                       lasten=[Kraft(2 * a, F)]).structure)
+    res = solve(
+        balken(
+            "K2", "", L=3 * a, lager={0: Einspannung(), 3 * a: Los()}, gelenke=[a], lasten=[Kraft(2 * a, F)]
+        ).structure
+    )
     werte = [k.value for k in keypoints(res, "Q3")]
     assert werte.count(F / 2) == 1
 
@@ -61,7 +64,7 @@ def test_allgemeine_trapezlast():
     assert pos.kind == "extrem"  # liegt bei Q3 = 0, Wert zu unhandlich fürs Bild
     # geschlossene Form: max M2 = (2*sqrt(3)*S^(3/2) - 9 q1 q2 (q1 + q2)) l^2 / (54 (q2 - q1)^2)
     S_ = q1**2 + q1 * q2 + q2**2
-    compact = (2 * sp.sqrt(3) * S_**sp.Rational(3, 2) - 9 * q1 * q2 * (q1 + q2)) * l**2 / (54 * (q2 - q1)**2)
+    compact = (2 * sp.sqrt(3) * S_ ** sp.Rational(3, 2) - 9 * q1 * q2 * (q1 + q2)) * l**2 / (54 * (q2 - q1) ** 2)
     for vals in ({q1: 1, q2: 2, l: 1}, {q1: 3, q2: 1, l: 2}):
         assert abs(float(pos.value.subs(vals)) - float(compact.subs(vals))) < 1e-12
     assert latex_value(pos.value).startswith(r"\frac{\left(2 \sqrt{3} \left(q_{1}^{2}")
@@ -70,14 +73,17 @@ def test_allgemeine_trapezlast():
     assert sp.simplify(pos.x1.subs(q1, 0) - l / sp.sqrt(3)) == 0
 
 
-@pytest.mark.parametrize("sid,qty,expected", [
-    ("EF01", "M2", []),
-    ("EF04", "M2", [("quadratische Parabel", 0, l)]),
-    ("EF07", "M2", [("kubische Parabel", 0, l)]),
-    ("EF07", "Q3", [("quadratische Parabel", 0, l)]),
-    ("EF08", "M2", [("kubische Parabel", 0, a), ("kubische Parabel", a, 2 * a)]),  # zwei verschiedene Kurven
-    ("GT02", "M2", [("quadratische Parabel", 0, 3 * a)]),  # dieselbe Parabel über das Gelenk hinweg
-])
+@pytest.mark.parametrize(
+    "sid,qty,expected",
+    [
+        ("EF01", "M2", []),
+        ("EF04", "M2", [("quadratische Parabel", 0, l)]),
+        ("EF07", "M2", [("kubische Parabel", 0, l)]),
+        ("EF07", "Q3", [("quadratische Parabel", 0, l)]),
+        ("EF08", "M2", [("kubische Parabel", 0, a), ("kubische Parabel", a, 2 * a)]),  # zwei verschiedene Kurven
+        ("GT02", "M2", [("quadratische Parabel", 0, 3 * a)]),  # dieselbe Parabel über das Gelenk hinweg
+    ],
+)
 def test_kurvenform(sid, qty, expected):
     from tm_anki.keypoints import curve_forms
 
@@ -91,34 +97,41 @@ def test_kurvenform(sid, qty, expected):
 def test_unabhaengige_einzelkraft_mit_streckenlast():
     from tm_anki.dsl import Kraft as K
 
-    res = solve(balken("K3", "", L=3 * a, lager={0: Fest(), 2 * a: Los()},
-                       lasten=[Strecke(0, 2 * a, q), K(3 * a, F)]).structure)
+    res = solve(
+        balken("K3", "", L=3 * a, lager={0: Fest(), 2 * a: Los()}, lasten=[Strecke(0, 2 * a, q), K(3 * a, F)]).structure
+    )
     a_v = next(r.value for r in res.reactions if r.name == "A_V")
     assert latex_value(a_v) == r"\frac{2qa - F}{2}"  # Summe positiv orientiert, Lehrbuch-Reihenfolge
     pos, _ = extremes(keypoints(res, "M2"))
-    assert sp.simplify(pos.value - (2 * q * a - F)**2 / (8 * q)) == 0
+    assert sp.simplify(pos.value - (2 * q * a - F) ** 2 / (8 * q)) == 0
 
 
-@pytest.mark.parametrize("value,expected", [
-    (q * l**2 / 8, r"\frac{ql^{2}}{8}"),
-    (9 * q * a**2 / 32, r"\frac{9qa^{2}}{32}"),
-    (-F * l, r"-F\,l"),  # schmaler Abstand: kursives F ragt sonst in das l
-    (F * l / 4, r"\frac{F\,l}{4}"),
-    (q0 * l**2 / (9 * sp.sqrt(3)), r"\frac{\sqrt{3}q_{0}l^{2}}{27}"),
-    (-q * a / 2, r"-\frac{qa}{2}"),
-    (l / 2, r"\frac{l}{2}"),
-])
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (q * l**2 / 8, r"\frac{ql^{2}}{8}"),
+        (9 * q * a**2 / 32, r"\frac{9qa^{2}}{32}"),
+        (-F * l, r"-F\,l"),  # schmaler Abstand: kursives F ragt sonst in das l
+        (F * l / 4, r"\frac{F\,l}{4}"),
+        (q0 * l**2 / (9 * sp.sqrt(3)), r"\frac{\sqrt{3}q_{0}l^{2}}{27}"),
+        (-q * a / 2, r"-\frac{qa}{2}"),
+        (l / 2, r"\frac{l}{2}"),
+    ],
+)
 def test_formatter(value, expected):
     assert latex_value(value) == expected
 
 
-@pytest.mark.parametrize("sid,qty", [
-    ("EF04", "M2"),  # Parabel unter dem Balken
-    ("RA02", "M2"),  # Riegelmoment im Rahmeninneren
-    ("EF04", "Q3"),  # Querkraft-Rechtecke über den Auflagern: Lagersymbole dürfen überdeckt werden
-    ("KA03", "M2"),  # negatives Moment ragt in die (gedämpfte) Streckenlast
-    ("EF11", "M2"),  # Momentensprung am Momentenpfeil: Bezeichnung M0 wird freigeräumt
-])
+@pytest.mark.parametrize(
+    "sid,qty",
+    [
+        ("EF04", "M2"),  # Parabel unter dem Balken
+        ("RA02", "M2"),  # Riegelmoment im Rahmeninneren
+        ("EF04", "Q3"),  # Querkraft-Rechtecke über den Auflagern: Lagersymbole dürfen überdeckt werden
+        ("KA03", "M2"),  # negatives Moment ragt in die (gedämpfte) Streckenlast
+        ("EF11", "M2"),  # Momentensprung am Momentenpfeil: Bezeichnung M0 wird freigeräumt
+    ],
+)
 def test_darstellung_auto_im_system(sid, qty):
     from tm_anki.render import choose_darstellung
 
@@ -129,11 +142,11 @@ def test_darstellung_auto_im_system(sid, qty):
 
 def test_bezeichnungen_liegen_ausserhalb_des_verlaufs():
     """Im System werden Bezeichnungen (A, B, F, M0 ...) aus der Verlaufsfläche geschoben."""
+    import matplotlib.pyplot as plt
+
     from tm_anki import conventions as cv
     from tm_anki.render.base import Geo
     from tm_anki.render.figure import _build_overlay
-
-    import matplotlib.pyplot as plt
 
     by_id = {s.id: s for s in SYSTEME}
     for sid, qty in (("EF11", "M2"), ("UE02", "Q3"), ("EF01", "Q3")):

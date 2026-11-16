@@ -201,11 +201,29 @@ class Canvas:
         else:
             self.grow(xs, ys)
 
-    def arrow(self, tail: Vec, tip: Vec, lw: float = 1.5, head: float = 11, color=cv.INK, occupy: bool = True,
-              zorder: float = 3):
+    def arrow(
+        self,
+        tail: Vec,
+        tip: Vec,
+        lw: float = 1.5,
+        head: float = 11,
+        color=cv.INK,
+        occupy: bool = True,
+        zorder: float = 3,
+    ):
         self.ax.annotate(
-            "", xy=tip, xytext=tail, zorder=zorder,
-            arrowprops=dict(arrowstyle="-|>", lw=lw, color=color, mutation_scale=head, shrinkA=0, shrinkB=0),
+            "",
+            xy=tip,
+            xytext=tail,
+            zorder=zorder,
+            arrowprops={
+                "arrowstyle": "-|>",
+                "lw": lw,
+                "color": color,
+                "mutation_scale": head,
+                "shrinkA": 0,
+                "shrinkB": 0,
+            },
         )
         xs, ys = [tail[0], tip[0]], [tail[1], tip[1]]
         if occupy:
@@ -213,8 +231,17 @@ class Canvas:
         else:
             self.grow(xs, ys)
 
-    def text(self, p: Vec, s: str, fs: float = cv.FONT_SIZE, ha: str = "center", va: str = "center",
-             occupy: bool = True, color=cv.INK, **kw):
+    def text(
+        self,
+        p: Vec,
+        s: str,
+        fs: float = cv.FONT_SIZE,
+        ha: str = "center",
+        va: str = "center",
+        occupy: bool = True,
+        color=cv.INK,
+        **kw,
+    ):
         w, h = text_size(s, fs, self.inch)
         x0 = {"left": p[0], "center": p[0] - w / 2, "right": p[0] - w}[ha]
         y0 = {"bottom": p[1], "center": p[1] - h / 2, "baseline": p[1] - 0.2 * h, "top": p[1] - h}[va]
@@ -233,10 +260,7 @@ class Canvas:
         return (x0, y0, x0 + w, y0 + h)
 
     def box_free(self, box) -> bool:
-        for b in self.boxes:
-            if box[0] < b[2] and box[2] > b[0] and box[1] < b[3] and box[3] > b[1]:
-                return False
-        return True
+        return all(not (box[0] < b[2] and box[2] > b[0] and box[1] < b[3] and box[3] > b[1]) for b in self.boxes)
 
 
 def align_for(direction: Vec) -> tuple[str, str]:

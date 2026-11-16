@@ -65,7 +65,7 @@ def draw_line_loads(cv_: Canvas, color=cv.INK):
                 return add(g.point(s), d, -(h(s) + math.copysign(gap, qn(s) or 1)))
 
         along = (sb - sa) * (num(ll.factor) if ll.bezug == "projektion" else 1.0)
-        n = max(3, int(round(along / (0.6 * u))) + 1)
+        n = max(3, round(along / (0.6 * u)) + 1)
         for s in np.linspace(sa, sb, n):
             if abs(h(s)) < 0.22 * u:
                 continue
@@ -99,8 +99,7 @@ def draw_line_loads(cv_: Canvas, color=cv.INK):
                     s0 -= inset
             cands = [s0]
             if abs(qa - qb) < 1e-12:  # konstante Last: Beschriftung darf entlang der Last ausweichen
-                cands += [min(max(s0 + f * span, sa + 0.08 * span), sb - 0.08 * span)
-                          for f in (-0.2, 0.2, -0.35, 0.35)]
+                cands += [min(max(s0 + f * span, sa + 0.08 * span), sb - 0.08 * span) for f in (-0.2, 0.2, -0.35, 0.35)]
             for s in cands:
                 out = scale(d, -math.copysign(1, qn(s) or 1))
                 anchor = add(tail(s), out, 0.25 * u)
@@ -183,8 +182,9 @@ def draw_moments(cv_: Canvas, color=cv.INK):
         xs, ys = P[0] + r * np.cos(th), P[1] + r * np.sin(th)
         cv_.line(xs[:-3], ys[:-3], lw=1.5, color=color, zorder=4)
         cv_.arrow((xs[-4], ys[-4]), (xs[-1], ys[-1]), lw=1.5, head=10, color=color)
-        cands = [add(P, (math.cos(math.radians(a)), math.sin(math.radians(a))), r + 0.6 * u)
-                 for a in (50, 130, 90, 20, 160)]
+        cands = [
+            add(P, (math.cos(math.radians(a)), math.sin(math.radians(a))), r + 0.6 * u) for a in (50, 130, 90, 20, 160)
+        ]
         _place_label(cv_, pm.label, P, cands, fs=cv.FONT_SIZE, color=color)
 
 

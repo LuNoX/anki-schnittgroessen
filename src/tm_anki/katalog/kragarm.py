@@ -1,4 +1,4 @@
-from ..dsl import Einspannung, F, Kraft, M0, Moment, Strecke, a, balken, l, q, q0
+from ..dsl import M0, Einspannung, F, Kraft, Moment, Strecke, a, balken, l, q, q0
 
 KATEGORIE = "Kragarm"
 
