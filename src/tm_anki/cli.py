@@ -96,6 +96,17 @@ def cmd_build(args) -> int:
     return 0
 
 
+def cmd_diff(args) -> int:
+    from .diff import schreibe_kommentar
+
+    d = schreibe_kommentar(Path(args.base), Path(args.head), Path(args.out), basis_fehlt=args.basis_fehlt)
+    print(
+        f"{len(d.neu)} neu, {len(d.entfernt)} entfernt, {len(d.geaendert)} geändert, "
+        f"{d.unveraendert} unverändert -> {Path(args.out) / 'comment.md'}"
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):  # Umlaute auch in der Windows-Konsole
         if isinstance(stream, io.TextIOWrapper):
@@ -126,6 +137,13 @@ def main(argv: list[str] | None = None) -> int:
     p_build.add_argument("--out", default="build")
     p_build.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     p_build.set_defaults(func=cmd_build)
+
+    p_diff = sub.add_parser("diff", help="Karten zweier Builds vergleichen (Markdown für PR-Kommentare)")
+    p_diff.add_argument("base", help="Build-Ordner vorher (mit TM_Schnittgroessen.apkg und media/)")
+    p_diff.add_argument("head", help="Build-Ordner nachher")
+    p_diff.add_argument("--out", default="build/diff", help="Zielordner für comment.md und img/")
+    p_diff.add_argument("--basis-fehlt", action="store_true", help="Hinweis: Basis-Build ist fehlgeschlagen")
+    p_diff.set_defaults(func=cmd_diff)
 
     args = p.parse_args(argv)
     return args.func(args)
