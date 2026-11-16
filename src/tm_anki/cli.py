@@ -86,7 +86,13 @@ def cmd_build(args) -> int:
     apkg = write_package(cards, out)
     print(f"\n{len(cards)} Karten aus {len(systeme)} Systemen in {time.time() - t0:.0f} s -> {apkg}")
     if args.preview:
-        print(f"Vorschau: {write_preview(cards, out)}")
+        landing = {
+            "release": args.release,
+            "download_url": args.download_url,
+            "repo_url": args.repo_url,
+            "n_systems": len(systeme),
+        }
+        print(f"Vorschau: {write_preview(cards, out, landing)}")
     return 0
 
 
@@ -114,6 +120,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Verlauf im System oder separat zeichnen (Standard: Katalog bzw. conventions.py)",
     )
     p_build.add_argument("--preview", action="store_true", help="zusätzlich build/preview.html schreiben")
+    p_build.add_argument("--release", help="Versionsname für den Kopf der Vorschau (macht sie zur Landing Page)")
+    p_build.add_argument("--download-url", help="Download-Link zum .apkg im Kopf der Vorschau")
+    p_build.add_argument("--repo-url", help="Link zum Repository im Kopf der Vorschau")
     p_build.add_argument("--out", default="build")
     p_build.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     p_build.set_defaults(func=cmd_build)

@@ -248,12 +248,49 @@ body { font-family: system-ui, sans-serif; background: #fcfcfb; color: #0b0b0b; 
           margin: .15em 0 .5em 0; }
 .tm-row span { white-space: nowrap; }
 @media (max-width: 800px) { .row { grid-template-columns: 1fr; } }
-</style></head><body><h1>TM Schnittgrößen – Vorschau</h1>
+.hero { max-width: 760px; margin: 8px auto 28px; text-align: center; }
+.hero p { line-height: 1.5; }
+.hero .version { color: #6b6a65; font-size: .95em; }
+.hero .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 18px 0 10px; }
+.btn { display: inline-block; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 600;
+       border: 1px solid #2a78d6; color: #2a78d6; }
+.btn.primary { background: #2a78d6; color: #fff; }
+.hero .small { font-size: .85em; color: #6b6a65; }
+</style></head><body>
 """
 
 
-def write_preview(cards: list[Card], out_dir: Path) -> Path:
-    rows = []
+def _landing_html(landing: dict | None, n_cards: int) -> str:
+    """Kopf der Vorschau. Mit ``release`` wird daraus die Landing Page (GitHub Pages)."""
+    if not landing or not landing.get("release"):
+        return "<h1>TM Schnittgrößen – Vorschau</h1>\n"
+    esc = html.escape
+    actions = []
+    if landing.get("download_url"):
+        actions.append(f'<a class="btn primary" href="{esc(landing["download_url"])}">Deck herunterladen (.apkg)</a>')
+    if landing.get("repo_url"):
+        actions.append(f'<a class="btn" href="{esc(landing["repo_url"])}">Quellcode auf GitHub</a>')
+    contrib = (
+        f' Ein System fehlt? <a href="{esc(landing["repo_url"])}/blob/main/CONTRIBUTING.md">Trag es selbst ein.</a>'
+        if landing.get("repo_url")
+        else ""
+    )
+    return (
+        '<header class="hero"><h1>TM-Schnittgrößen als Anki-Karten</h1>'
+        f'<p class="version">Version {esc(landing["release"].removeprefix("v"))} · {n_cards} Karten aus '
+        f"{landing.get('n_systems', '?')} Systemen</p>"
+        "<p>Anki-Deck zum Üben von Schnittgrößenverläufen (N₁, Q₃, M₂) in der Technischen Mechanik. "
+        "Die Vorderseite zeigt das System, die Rückseite den Verlauf mit exakten Kennwerten.</p>"
+        f'<div class="actions">{"".join(actions)}</div>'
+        '<p class="small">In Anki über <i>Datei → Importieren</i> laden. Neue Versionen aktualisieren '
+        f"vorhandene Karten, der Lernfortschritt bleibt erhalten.{contrib}</p>"
+        '<p class="small">Alle Angaben ohne Gewähr. Unten sind alle Karten mit Vorder- und Rückseite zu sehen.</p>'
+        "</header>\n"
+    )
+
+
+def write_preview(cards: list[Card], out_dir: Path, landing: dict | None = None) -> Path:
+    rows = [_landing_html(landing, len(cards))]
     for c in cards:
         rows.append(
             f'<div class="row" id="{c.note_id}"><div class="meta"><b>{c.note_id}</b>'
@@ -264,7 +301,10 @@ def write_preview(cards: list[Card], out_dir: Path) -> Path:
             "</div>"
         )
     target = out_dir / "preview.html"
-    target.write_text(PREVIEW_HEAD + "\n".join(rows) + "</body></html>", encoding="utf-8")
+    head = PREVIEW_HEAD
+    if landing and landing.get("release"):
+        head = head.replace("<title>TM Schnittgrößen – Vorschau</title>", "<title>TM-Schnittgrößen</title>")
+    target.write_text(head + "\n".join(rows) + "</body></html>", encoding="utf-8")
     return target
 
 
