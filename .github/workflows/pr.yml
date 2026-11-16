@@ -1,0 +1,57 @@
+# Für jeden Pull Request: Lint und Tests (checks.yml) sowie ein Karten-Diff (neu / entfernt / geändert).
+# Läuft ohne Schreibrechte, auch für PRs aus Forks. Den Kommentar postet pr-kommentar.yml.
+name: PR
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  karten-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+      - name: Karten des PR bauen
+        run: uv run --locked --no-dev tm-anki build --format png --out "$RUNNER_TEMP/head"
+      - name: Paket prüfen
+        run: uv run --locked --no-dev tm-anki check-deck "$RUNNER_TEMP/head/TM_Schnittgroessen.apkg" --strict
+      - name: Karten des Ziel-Branch bauen
+        id: base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base-src" "$BASE_SHA"
+          cd "$RUNNER_TEMP/base-src"
+          if ! uv run --locked --no-dev tm-anki build --format png --out "$RUNNER_TEMP/base"; then
+            echo "::warning::Der Ziel-Branch ließ sich nicht bauen, alle Karten erscheinen als neu."
+            echo "fehlt=--basis-fehlt" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Diff erzeugen
+        env:
+          FEHLT: ${{ steps.base.outputs.fehlt }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          uv run --locked --no-dev tm-anki diff "$RUNNER_TEMP/base" "$RUNNER_TEMP/head" --out karten-diff $FEHLT
+          echo "$PR" > karten-diff/pr-number
+          echo "$HEAD_SHA" > karten-diff/head-sha
+          sed 's#<img [^>]*>#(Bild im PR-Kommentar)#g' karten-diff/comment.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: karten-diff
+          path: karten-diff
+          retention-days: 7

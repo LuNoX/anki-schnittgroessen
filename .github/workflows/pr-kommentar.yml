@@ -1,0 +1,105 @@
+# Postet den Karten-Diff aus pr.yml als Kommentar im Pull Request (und aktualisiert ihn bei neuen Pushes).
+#
+# Läuft getrennt von pr.yml mit Schreibrechten, führt aber keinen Code aus dem PR aus. Er liest nur
+# das Artifact (Markdown + PNG-Bilder). So funktioniert der Kommentar auch für PRs aus Forks.
+# Die Bilder liegen auf einem Hilfsbranch pr-vorschau/pr-<Nummer>, der beim Schließen des PR gelöscht wird.
+#
+# Hinweis: workflow_run und pull_request_target greifen nur mit der Version dieser Datei auf dem Default-Branch.
+name: PR-Kommentar
+
+on:
+  workflow_run:
+    workflows: ["PR"]
+    types: [completed]
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  kommentar:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # Bilder auf den Hilfsbranch pushen
+      pull-requests: write   # Kommentar schreiben
+      actions: read          # Artifact des PR-Laufs lesen
+    concurrency:
+      group: pr-kommentar-${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: karten-diff
+          path: diff
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: PR prüfen
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          PR=$(head -c 20 diff/pr-number | tr -dc '0-9')
+          [ -n "$PR" ] || { echo "::error::Keine PR-Nummer im Artifact"; exit 1; }
+          AKTUELL=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)
+          if [ "$AKTUELL" != "$RUN_SHA" ]; then
+            echo "PR #$PR hat inzwischen neue Commits, der neuere Lauf kommentiert."
+            echo "veraltet=1" >> "$GITHUB_OUTPUT"
+          fi
+          echo "nummer=$PR" >> "$GITHUB_OUTPUT"
+
+      - name: Bilder hochladen
+        id: bilder
+        if: steps.pr.outputs.veraltet != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.pr.outputs.nummer }}
+        run: |
+          mkdir bilder
+          # nur PNG-Dateien mit unauffälligem Namen übernehmen
+          find diff/img -maxdepth 1 -type f -name '*.png' -size -3M 2>/dev/null \
+            | { grep -E '/[A-Za-z0-9_.-]+\.png$' || true; } | xargs -r cp -t bilder
+          if [ -z "$(ls -A bilder)" ]; then exit 0; fi
+          cd bilder
+          git init -q -b "pr-vorschau/pr-$PR"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "Karten-Vorschau für PR #$PR"
+          git push -q --force \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/pr-vorschau/pr-$PR"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Kommentar schreiben
+        if: steps.pr.outputs.veraltet != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.pr.outputs.nummer }}
+          SHA: ${{ steps.bilder.outputs.sha }}
+        run: |
+          sed "s#{{IMG}}#https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${SHA}#g" diff/comment.md > body.md
+          ID=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- anki-karten-diff -->"))) | .id' \
+            | head -n 1)
+          if [ -n "$ID" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$ID" -F body=@body.md > /dev/null
+          else
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file body.md
+          fi
+
+  aufraeumen:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Hilfsbranch mit den Bildern löschen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/pr-vorschau/pr-$PR" || true
