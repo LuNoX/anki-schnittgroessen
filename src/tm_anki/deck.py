@@ -80,12 +80,6 @@ MODEL = genanki.Model(
 )
 
 
-class TMNote(genanki.Note):
-    @property
-    def guid(self):  # stabil über Neubauten hinweg -> Lernfortschritt bleibt erhalten
-        return genanki.guid_for(self.fields[0])
-
-
 # --------------------------------------------------------------------------- Karteninhalt
 
 
@@ -215,8 +209,9 @@ def write_package(cards: list[Card], out_dir: Path) -> Path:
             media.append(str(path))
         tag_kat = c.kategorie.replace(" ", "_")
         deck.add_note(
-            TMNote(
+            genanki.Note(
                 model=MODEL,
+                guid=genanki.guid_for(c.note_id),  # stabil über Neubauten hinweg -> Lernfortschritt bleibt erhalten
                 fields=[
                     c.note_id,
                     _titel_html(c.titel),

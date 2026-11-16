@@ -66,7 +66,7 @@ def draw_line_loads(cv_: Canvas, color=cv.INK):
 
         along = (sb - sa) * (num(ll.factor) if ll.bezug == "projektion" else 1.0)
         n = max(3, round(along / (0.6 * u)) + 1)
-        for s in np.linspace(sa, sb, n):
+        for s in np.linspace(sa, sb, n).tolist():
             if abs(h(s)) < 0.22 * u:
                 continue
             tip = add(g.point(s), d, -math.copysign(gap, qn(s)))
@@ -97,7 +97,7 @@ def draw_line_loads(cv_: Canvas, color=cv.INK):
                     s0 += inset
                 elif abs(s0 - sb) < 1e-9:
                     s0 -= inset
-            cands = [s0]
+            cands: list[float] = [float(s0)]
             if abs(qa - qb) < 1e-12:  # konstante Last: Beschriftung darf entlang der Last ausweichen
                 cands += [min(max(s0 + f * span, sa + 0.08 * span), sb - 0.08 * span) for f in (-0.2, 0.2, -0.35, 0.35)]
             for s in cands:
@@ -185,7 +185,7 @@ def draw_moments(cv_: Canvas, color=cv.INK):
         cands = [
             add(P, (math.cos(math.radians(a)), math.sin(math.radians(a))), r + 0.6 * u) for a in (50, 130, 90, 20, 160)
         ]
-        _place_label(cv_, pm.label, P, cands, fs=cv.FONT_SIZE, color=color)
+        _place_label(cv_, pm.label, cands, fs=cv.FONT_SIZE, color=color)
 
 
 def draw_loads(cv_: Canvas, color=cv.INK):

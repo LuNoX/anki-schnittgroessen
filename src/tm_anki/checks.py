@@ -22,9 +22,9 @@ def check(sysdef: SystemDef, result: Result) -> tuple[list[str], list[str]]:
     warnings: list[str] = []
 
     if sysdef.groessen:
-        for g in sysdef.groessen:
-            if g not in QUANTITIES:
-                errors.append(f"unbekannte Größe {g!r}")
+        for groesse in sysdef.groessen:
+            if groesse not in QUANTITIES:
+                errors.append(f"unbekannte Größe {groesse!r}")
 
     load_syms = set()
     for pf in st.point_forces:

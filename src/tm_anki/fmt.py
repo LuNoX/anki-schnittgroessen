@@ -39,7 +39,9 @@ def _wrap(expr: sp.Expr) -> str:
 
 def _radical_base(expr: sp.Expr) -> sp.Expr | None:
     """Einzige symbolische Wurzelbasis S (Potenzen S^(k/2)), sonst None."""
-    bases = {p.base for p in expr.atoms(sp.Pow) if p.exp.is_Rational and p.exp.q == 2 and p.base.free_symbols}
+    bases = {
+        p.base for p in expr.atoms(sp.Pow) if isinstance(p.exp, sp.Rational) and p.exp.q == 2 and p.base.free_symbols
+    }
     return bases.pop() if len(bases) == 1 else None
 
 
@@ -204,7 +206,8 @@ def _latex_general(v: sp.Expr) -> str:
     def side(expr, number) -> tuple[str, bool]:
         """LaTeX einer Seite des Bruchs; zweiter Wert: Vorzeichen wurde umgedreht."""
         flipped = False
-        loads, lengths = [], []
+        loads: list = []
+        lengths: list = []
         for f in sp.Mul.make_args(expr):
             if f == 1:
                 continue

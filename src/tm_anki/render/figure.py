@@ -14,7 +14,8 @@ import math
 
 import matplotlib
 
-matplotlib.use("Agg")
+matplotlib.use("Agg")  # vor pyplot: kein GUI-Backend (CI, Prozesspool)
+# pylint: disable=wrong-import-position
 import matplotlib.pyplot as plt
 
 from .. import conventions as cv
@@ -25,6 +26,8 @@ from .base import Canvas, Geo
 from .diagram import draw_diagram, draw_skeleton
 from .loads import draw_line_loads, draw_loads, draw_moments, draw_point_forces
 from .structure import draw_dimensions, draw_fiber, draw_hinges, draw_members, draw_supports, draw_triads
+
+# pylint: enable=wrong-import-position
 
 matplotlib.rcParams.update(
     {

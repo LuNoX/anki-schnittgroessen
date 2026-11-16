@@ -153,7 +153,7 @@ def draw_supports(cv_: Canvas, labels: bool = True, color=cv.INK):
             cands = [anchor, _mirror(geo.p[sup.node], anchor, n)]
             # bevorzugt auf der Außenseite des Systems (dort liegt kein Verlauf, wenn er im System gezeichnet wird)
             cands.sort(key=lambda c: -math.dist(c, center))
-            _place_label(cv_, sup.label, geo.p[sup.node], cands, fs=cv.FONT_SIZE)
+            _place_label(cv_, sup.label, cands, fs=cv.FONT_SIZE)
 
 
 def _mirror(P: Vec, anchor: Vec, n: Vec) -> Vec:
@@ -164,8 +164,8 @@ def _mirror(P: Vec, anchor: Vec, n: Vec) -> Vec:
     return add(anchor, t, -2 * k)
 
 
-def _place_label(cv_: Canvas, text: str, ref: Vec, cands: list[Vec], fs: float, color=cv.INK):
-    best, best_pen = None, math.inf
+def _place_label(cv_: Canvas, text: str, cands: list[Vec], fs: float, color=cv.INK):
+    best, best_pen = cands[0], math.inf
     for c in cands:
         box = cv_.text_box(c, f"${text}$", fs, "center", "center")
         pts = [(box[0], box[1]), (box[2], box[1]), (box[0], box[3]), (box[2], box[3]), c]
@@ -194,7 +194,7 @@ def draw_triads(cv_: Canvas, color=cv.INK):
             add(add(P0, g.e1, 1.0 * u), g.e3, -2.8 * u),
             add(add(P0, g.e1, min(0.5 * g.L, 6 * u)), g.e3, 1.25 * u),
         ]
-        best, best_pen = None, math.inf
+        best, best_pen = cands[0], math.inf
         for O in cands:
             pts = []
             for k in np.linspace(0, 1, 6):

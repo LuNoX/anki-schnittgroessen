@@ -1,6 +1,7 @@
 """Katalog, Kennwerte, Rendering und Deck-Export."""
 
 import zipfile
+from typing import Any
 
 import pytest
 import sympy as sp
@@ -35,6 +36,7 @@ def test_invarianten(sysdef):
 def test_kennwerte_einfeld_streckenlast_links():
     res = solve(balken("K1", "", L=2 * a, lager={0: Fest(), 2 * a: Los()}, lasten=[Strecke(0, a, q)]).structure)
     pos, neg = extremes(keypoints(res, "M2"))
+    assert pos is not None
     assert sp.simplify(pos.value - 9 * q * a**2 / 32) == 0
     assert sp.simplify(pos.x1 - 3 * a / 4) == 0
     assert neg is None
@@ -61,11 +63,13 @@ def test_allgemeine_trapezlast():
     assert sp.simplify(a_v - (2 * q1 + q2) * l / 6) == 0
     assert latex_value(a_v) == r"\frac{\left(2q_{1} + q_{2}\right)\,l}{6}"
     pos, _ = extremes(keypoints(res, "M2"))
+    assert pos is not None
     assert pos.kind == "extrem"  # liegt bei Q3 = 0, Wert zu unhandlich fürs Bild
     # geschlossene Form: max M2 = (2*sqrt(3)*S^(3/2) - 9 q1 q2 (q1 + q2)) l^2 / (54 (q2 - q1)^2)
     S_ = q1**2 + q1 * q2 + q2**2
     compact = (2 * sp.sqrt(3) * S_ ** sp.Rational(3, 2) - 9 * q1 * q2 * (q1 + q2)) * l**2 / (54 * (q2 - q1) ** 2)
-    for vals in ({q1: 1, q2: 2, l: 1}, {q1: 3, q2: 1, l: 2}):
+    faelle: list[dict[Any, Any]] = [{q1: 1, q2: 2, l: 1}, {q1: 3, q2: 1, l: 2}]
+    for vals in faelle:
         assert abs(float(pos.value.subs(vals)) - float(compact.subs(vals))) < 1e-12
     assert latex_value(pos.value).startswith(r"\frac{\left(2 \sqrt{3} \left(q_{1}^{2}")
     # Grenzfall q1 = 0: Dreieckslast, max M2 = sqrt(3) q2 l^2 / 27 bei l/sqrt(3)
@@ -95,14 +99,12 @@ def test_kurvenform(sid, qty, expected):
 
 
 def test_unabhaengige_einzelkraft_mit_streckenlast():
-    from tm_anki.dsl import Kraft as K
-
-    res = solve(
-        balken("K3", "", L=3 * a, lager={0: Fest(), 2 * a: Los()}, lasten=[Strecke(0, 2 * a, q), K(3 * a, F)]).structure
-    )
+    sysdef = balken("K3", "", L=3 * a, lager={0: Fest(), 2 * a: Los()}, lasten=[Strecke(0, 2 * a, q), Kraft(3 * a, F)])
+    res = solve(sysdef.structure)
     a_v = next(r.value for r in res.reactions if r.name == "A_V")
     assert latex_value(a_v) == r"\frac{2qa - F}{2}"  # Summe positiv orientiert, Lehrbuch-Reihenfolge
     pos, _ = extremes(keypoints(res, "M2"))
+    assert pos is not None
     assert sp.simplify(pos.value - (2 * q * a - F) ** 2 / (8 * q)) == 0
 
 

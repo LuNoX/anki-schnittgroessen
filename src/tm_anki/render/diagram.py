@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import math
+from typing import Any
 
 import numpy as np
 import sympy as sp
@@ -75,7 +76,7 @@ def draw_diagram(
     color = cv.COLORS[qty]
     side = cv.plot_sign(qty)
     k = diagram_scale(cv_, result, qty)
-    vis = {"visible": visible}
+    vis: dict[str, Any] = {"visible": visible}
     system_boxes = (list(avoid_boxes) if avoid_boxes is not None else list(cv_.boxes)) if overlay else []
     strict: list = []  # Boxen der Bezeichnungen (nach dem Verschieben)
     metric = {"cover": 0.0, "label_hits": 0}
@@ -472,7 +473,8 @@ def _place_value_labels(
         text = fmt_math(kp.value)
         if cv.VALUE_FULL_SIZE_FRACTIONS:
             text = text.replace("\\frac", "\\dfrac")
-        best = None
+        best: Any = None
+        best_sc = math.inf
         for mi, s_expr in [(kp.member, kp.s), *kp.alts]:
             s_c = _num(s_expr)
             own = [(mi, s_c)] + ([(kp.member2, 0.0)] if kp.kind == "ecke" and kp.member2 is not None else [])
@@ -497,9 +499,10 @@ def _place_value_labels(
                 sc = score(box, own) + penalty
                 if sh == 0.0 and ha_c == "center" and va_c == "center" and kp.kind == "ecke":
                     sc += 3 * foreign(box, [])  # Eckposition nur, wenn sie außerhalb aller Flächen liegt
-                if best is None or sc < best[0]:
+                if sc < best_sc:
+                    best_sc = sc
                     best = (sc, (anchor_c, ha_c, va_c, out_c, c_c, g_c, s_cc), box, own)
-            if best[0] == 0:
+            if best_sc == 0:
                 break
         _, (anchor, ha, va, out, c, g, s), box, own = best
         sc = score(box, own)
@@ -623,7 +626,8 @@ def _draw_extremum_dimensions(
         pad = 0.2 * u  # Abstand zu Lasten/Lagern, damit sich die Bemaßung nicht dazwischen quetscht
         avoid_pad = [(b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad) for b in avoid]
         lam = _lam(seg.f(qty))
-        best = None
+        best: Any = None
+        best_sc = math.inf
         for n, off in cands:
             p0, p1 = add(a0, n, off), add(a1, n, off)
             line = np.array([add(p0, (p1[0] - p0[0], p1[1] - p0[1]), t) for t in np.linspace(0, 1, 30)])
@@ -654,10 +658,11 @@ def _draw_extremum_dimensions(
                 + 10 * _box_hits(box, placed)
             )
             sc = 10 * hits + off / u  # Kollisionen vermeiden, sonst möglichst nah am Stab
-            if best is None or sc < best[0]:
+            if sc < best_sc:
+                best_sc = sc
                 best = (sc, n, p0, p1, anchor, ha, va, box, np.vstack([line, helpers]), starts)
         _, n, p0, p1, anchor, ha, va, box, line, starts = best
-        style = dict(occupy=False, color=cv.INK_MUTED, zorder=2, **vis)
+        style: dict[str, Any] = {"occupy": False, "color": cv.INK_MUTED, "zorder": 2, **vis}
         cv_.line([p0[0], p1[0]], [p0[1], p1[1]], lw=0.8, **style)
         tick = norm(add(g.e1, n))
         for a, p in zip(starts, (p0, p1)):

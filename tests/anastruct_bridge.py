@@ -8,6 +8,7 @@ Vorzeichenabbildung (an EF04/KA01/EF11/Winkelträger kalibriert, s. test_orakel_
 from __future__ import annotations
 
 import itertools
+from typing import Literal
 
 import numpy as np
 import sympy as sp
@@ -63,7 +64,7 @@ def build(st: Structure, result: Result):
         bps = _breakpoints(st, m.idx)
         L = num(m.length)
         for sa, sb in itertools.pairwise(bps):
-            spring = {}
+            spring: dict[Literal[1, 2], float] = {}
             if sa < TOL and m.n0 in first_body and body_of[m.idx] != first_body[m.n0]:
                 spring[1] = 0
             if sb > L - TOL and m.n1 in first_body and body_of[m.idx] != first_body[m.n1]:
@@ -92,7 +93,7 @@ def build(st: Structure, result: Result):
         elif sup.kind == "einspannung":
             ss.add_support_fixed(nid)
         elif sup.kind == "los":
-            ang = sup.angle_deg % 180
+            ang = (90.0 if sup.angle_deg is None else sup.angle_deg) % 180
             if abs(ang - 90) < 1e-9:
                 ss.add_support_roll(nid, direction="x")
             elif abs(ang) < 1e-9:
@@ -108,6 +109,7 @@ def build(st: Structure, result: Result):
     for ll in st.line_loads:
         m = st.members[ll.member]
         dx, dz = (num(c) for c in ll.d)
+        direction: Literal["x", "y"]
         if abs(dx) < TOL:
             direction, sign = "y", -np.sign(dz)
         elif abs(dz) < TOL:

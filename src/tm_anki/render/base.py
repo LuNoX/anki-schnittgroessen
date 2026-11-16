@@ -6,6 +6,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -73,6 +74,7 @@ class Geo:
     def at(self, loc: Location) -> Vec:
         if loc.node is not None:
             return self.p[loc.node]
+        assert loc.member is not None, "Ort ohne Knoten braucht einen Stab"
         return self.members[loc.member].point(num(loc.s))
 
     def dirs_from(self, node: str) -> list[Vec]:
@@ -131,7 +133,7 @@ class Canvas:
         self.obstacle_pts = np.zeros((0, 2))  # z. B. Verlaufsfläche im System (für Dreibein-Platzierung)
         self.boxes: list[tuple[float, float, float, float]] = []
         self.ext = [math.inf, math.inf, -math.inf, -math.inf]
-        self.texts = []  # (artist, box)
+        self.texts: list[tuple[Any, tuple[float, float, float, float]]] = []  # (artist, box)
 
     # ---- Ausdehnung und Belegung -----------------------------------------
     def grow(self, xs, ys):

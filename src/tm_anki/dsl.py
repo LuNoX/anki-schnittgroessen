@@ -30,7 +30,33 @@ from .model import (
     Support,
     SystemDef,
 )
-from .symbols import M0, F, a, l, laenge, last, num, q, q0, q1, q2  # noqa: F401  (Re-Export)
+from .symbols import M0, F, a, l, laenge, last, num, q, q0, q1, q2
+
+# Öffentliche Katalog-Sprache. Symbole und Hilfsfunktionen aus symbols.py werden re-exportiert, damit ein
+# Katalogmodul alles aus einer Quelle importieren kann.
+__all__ = [
+    "M0",
+    "REGISTRY",
+    "Einspannung",
+    "F",
+    "Fest",
+    "Kraft",
+    "Los",
+    "Moment",
+    "Stab",
+    "Strecke",
+    "a",
+    "balken",
+    "l",
+    "laenge",
+    "last",
+    "q",
+    "q0",
+    "q1",
+    "q2",
+    "rahmen",
+    "variante",
+]
 
 TOL = 1e-9
 

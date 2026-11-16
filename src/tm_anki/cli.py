@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import io
 import os
 import sys
 import time
@@ -47,7 +48,7 @@ def cmd_check(args) -> int:
         try:
             result = solve(s.structure)
             errors, warnings = check(s, result)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught  # jedes System melden, nicht abbrechen
             errors, warnings = [f"{type(exc).__name__}: {exc}"], []
         qtys = ",".join(s.groessen or (result.nonzero_quantities() if not errors else ()))
         status = "FEHLER" if errors else "ok"
@@ -91,7 +92,7 @@ def cmd_build(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):  # Umlaute auch in der Windows-Konsole
-        if hasattr(stream, "reconfigure"):
+        if isinstance(stream, io.TextIOWrapper):
             stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(prog="tm-anki", description="Anki-Karten für Schnittgrößenverläufe")
     sub = p.add_subparsers(dest="cmd", required=True)

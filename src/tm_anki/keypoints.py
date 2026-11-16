@@ -192,7 +192,7 @@ def curve_forms(result: Result, qty: str) -> list[CurveRange]:
     out: list[CurveRange] = []
     x = sp.Symbol("x1")
     for chain in st.chains:
-        cur = None
+        cur: CurveRange | None = None
         for mi in chain.members:
             m = st.members[mi]
             for g in result.members[mi].segments:
@@ -205,7 +205,8 @@ def curve_forms(result: Result, qty: str) -> list[CurveRange]:
                 f_x = sp.expand(f.subs(S, x - m.s0))
                 first = st.members[cur.members[0]] if cur else None
                 if (
-                    cur
+                    cur is not None
+                    and first is not None
                     and _same(cur.x1_hi, x_lo)
                     and sp.expand(cur.expr_x1 - f_x) == 0
                     and abs(num(first.e1[0]) - num(m.e1[0])) < TOL

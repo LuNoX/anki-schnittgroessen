@@ -13,6 +13,7 @@ from __future__ import annotations
 import itertools
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
+from typing import Any
 
 import sympy as sp
 
@@ -256,7 +257,7 @@ def solve(st: Structure) -> Result:
     A_num = A.subs(dict.fromkeys(A.free_symbols, 1))
     rank = A_num.rank()
     if n_unk != n_eq or rank < n_unk:
-        reactions = sum(len(s.directions) + int(s.moment) for s in st.supports)
+        n_reactions = sum(len(s.directions) + int(s.moment) for s in st.supports)
         if n_unk > rank and n_eq == rank:
             kind = "statisch unbestimmt"
         elif n_unk < n_eq or rank < n_eq:
@@ -264,11 +265,11 @@ def solve(st: Structure) -> Result:
         else:
             kind = "nicht eindeutig lösbar"
         raise StaticsError(
-            f"System ist {kind}: {reactions} Lagerreaktionen, {len(bodies)} Teilkörper, "
+            f"System ist {kind}: {n_reactions} Lagerreaktionen, {len(bodies)} Teilkörper, "
             f"{len(pins)} Gelenk(e) -> {n_unk} Unbekannte, {n_eq} Gleichungen, Rang {rank}"
         )
     sol_vec = A.LUsolve(rhs)
-    sol = {u: sp.simplify(v) for u, v in zip(unknowns, sol_vec)}
+    sol: dict[Any, Any] = {u: sp.simplify(v) for u, v in zip(unknowns, sol_vec)}
 
     def subs(f: Force) -> Force:
         return Force(f.x, f.z, sp.sympify(f.fx).subs(sol), sp.sympify(f.fz).subs(sol), sp.sympify(f.m).subs(sol))
