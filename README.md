@@ -122,8 +122,7 @@ Eine neue Kategorie ist ein neues Modul in `katalog/` mit `KATEGORIE` und `SYSTE
 
 ## AI Notice
 
-Dieses Repository war ein kleines Wochenendprojekt. Der gesamte Code wurde von Claude (KI-Assistent von
-Anthropic, über Claude Code) geschrieben, nach meinen Vorgaben und Rückmeldungen.
+Dieses Repository war ein kleines Wochenendprojekt. Der gesamte Code wurde nach meinen Vorgaben und Rückmeldungen von Claude Code geschrieben.
 
 ## Lizenz
 
